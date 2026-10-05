@@ -1,0 +1,19 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ipynb_checkpoints/
+# data, checkpoints and run outputs (downloaded or produced at run time)
+cifar/
+data/
+edm/
+*.pt
+*.pkl
+step*_*.npz
+step*_*.npy
+# LaTeX build files
+paper/*.aux
+paper/*.log
+paper/*.out
+paper/*.blg
+paper/*.bbl

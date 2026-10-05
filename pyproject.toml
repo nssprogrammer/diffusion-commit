@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "commitment"
+version = "1.0.0"
+description = "Measuring class commitment in diffusion models (code for 'When Does a Diffusion Model Decide What to Draw?')"
+readme = "README.md"
+license = {text = "MIT"}
+authors = [{name = "Snigdha Chandan Khilar", email = "snkhilar@gmail.com"}]
+requires-python = ">=3.9"
+dependencies = ["numpy>=1.23", "scipy>=1.9", "scikit-learn>=1.1", "matplotlib>=3.6"]
+
+[project.optional-dependencies]
+gpu = ["torch>=2.0", "torchvision>=0.15", "transformers>=4.30", "diffusers>=0.20", "pytorch-fid>=0.3"]
+test = ["pytest>=7"]
+
+[project.urls]
+Repository = "https://github.com/nssprogrammer/diffusion-commit"
+
+[tool.setuptools]
+packages = ["commitment"]

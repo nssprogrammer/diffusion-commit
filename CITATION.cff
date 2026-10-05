@@ -1,0 +1,12 @@
+cff-version: 1.2.0
+message: "If you use this code, please cite the paper."
+title: "When Does a Diffusion Model Decide What to Draw?"
+authors:
+  - family-names: Khilar
+    given-names: Snigdha Chandan
+    email: snkhilar@gmail.com
+    affiliation: Independent Researcher
+repository-code: "https://github.com/nssprogrammer/diffusion-commit"
+license: MIT
+version: 1.0.0
+date-released: 2026-10-06

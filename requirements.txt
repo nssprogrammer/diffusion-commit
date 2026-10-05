@@ -1,0 +1,13 @@
+# CPU modules, tests, figures
+numpy>=1.23
+scipy>=1.9
+scikit-learn>=1.1
+matplotlib>=3.6
+pytest>=7
+# GPU notebooks (Kaggle images ship most of these)
+torch>=2.0
+torchvision>=0.15
+transformers>=4.30
+diffusers>=0.20
+pytorch-fid>=0.3
+nbformat>=5

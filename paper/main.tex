@@ -1,0 +1,487 @@
+\documentclass[11pt]{article}
+\usepackage[a4paper,left=2.45cm,right=2.45cm,top=2.6cm,bottom=2.6cm,headheight=14pt]{geometry}
+\usepackage{charter}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{microtype}
+\usepackage[dvipsnames]{xcolor}
+\usepackage{enumitem}
+\usepackage{fancyhdr}
+\usepackage{titlesec}
+\usepackage{caption}
+\usepackage[round]{natbib}
+\usepackage{placeins}
+\usepackage[colorlinks=true,linkcolor=blue!65!black,citecolor=blue!65!black,urlcolor=blue!65!black]{hyperref}
+
+% ---------------- look and feel ----------------
+\setlength{\parindent}{0pt}\setlength{\parskip}{6pt}\setlength{\emergencystretch}{3em}
+\renewcommand{\topfraction}{0.9}\renewcommand{\textfraction}{0.07}\renewcommand{\floatpagefraction}{0.8}
+\titleformat{\section}{\Large\bfseries}{\thesection.}{0.45em}{}
+\titleformat{\subsection}{\large\bfseries}{\thesubsection.}{0.45em}{}
+\titlespacing*{\section}{0pt}{14pt}{4pt}\titlespacing*{\subsection}{0pt}{10pt}{2pt}
+\newcommand{\para}[1]{\textbf{#1}\hspace{0.6em}}
+\DeclareCaptionLabelSeparator{bar}{\ |\ }
+\captionsetup{labelsep=bar,font=normalsize,labelfont=normalfont,justification=justified,singlelinecheck=false}
+\setlist{itemsep=2pt,topsep=2pt}
+\newcommand{\runtitle}{When Does a Diffusion Model Decide What to Draw?}
+\fancypagestyle{main}{\fancyhf{}\fancyhead[C]{\small\runtitle}\fancyfoot[R]{\small\thepage}\renewcommand{\headrulewidth}{0.5pt}\renewcommand{\footrulewidth}{0.5pt}}
+\fancypagestyle{first}{\fancyhf{}\fancyhead[L]{\large\bfseries Preprint}\fancyhead[R]{\small\textit{2026-10-6}}\fancyfoot[L]{\small\textit{Corresponding author: Snigdha Chandan Khilar, \href{mailto:snkhilar@gmail.com}{snkhilar@gmail.com}}}\renewcommand{\headrulewidth}{0.5pt}\renewcommand{\footrulewidth}{0.5pt}}
+\pagestyle{main}
+
+\newcommand{\E}{\mathbb{E}}
+\newcommand{\sbif}{\sigma_{\rm bif}}
+\newcommand{\tbif}{\tau_{\rm bif}}
+\newtheorem{proposition}{Proposition}
+\begin{document}
+\thispagestyle{first}
+
+\vspace*{2mm}
+{\LARGE\bfseries When Does a Diffusion Model Decide What to Draw?\par}
+\vspace{10pt}
+{\normalsize\bfseries Snigdha Chandan Khilar\par}
+{\small Independent Researcher\quad\textperiodcentered\quad\href{mailto:snkhilar@gmail.com}{snkhilar@gmail.com}\par}
+\vspace{12pt}
+
+{\bfseries
+A diffusion model starts from pure noise and removes it step by step. Somewhere along the way it stops being able to become ``anything'' and becomes committed to, say, a horse rather than a truck. We measure when this happens, and what a trained model gets wrong about it, on CIFAR-10. The most direct measurement is to freeze a half-finished image, restart the generation from that point many times, and count how often each class comes out. We call this probability the committor. Measured this way, the model settles coarse questions (vehicle or animal?) at roughly twice the noise level of fine ones (which animal?). A much cheaper measurement, the noise level at which a classifier's opinion about two classes splits into two distinct groups, gets the order of these decisions right (rank correlation 0.73--0.88) but not their exact timing. We then compare pretrained models with their training data, using a comparison that is exact in principle. For NVIDIA's EDM model the result is simple: along the class axis, the model commits exactly as its data do, except that it generates some classes too often and others too rarely. If we give the data the model's class proportions, the data reproduce the model's behaviour pair by pair, as closely as two halves of the data reproduce each other. If we give the model the data's proportions, by sampling a class-conditional model with uniform labels or by gently steering the sampler, the model reproduces the data's behaviour, with no loss in image quality. Part of the class imbalance comes from the sampler rather than the network: a coarse 256-step sampler roughly doubles it. An older DDPM model shows the same class-proportion effect plus a second error, committing about 20\% too late, which our planted-error tests show the method is able to detect.
+\par}
+\vspace{4pt}
+{\small Code: \url{https://github.com/nssprogrammer/diffusion-commit}\par}
+
+\section{Introduction}
+
+Watch a diffusion model generate an image and the picture comes into focus in a recognisable order. First there is a blur of colour, then a rough layout, then an object, and finally fine texture. Somewhere in the middle of this process the model \emph{commits}. Before that moment, the half-finished image could still turn into several different things. After it, the outcome is settled: it will be a horse, and no amount of further sampling noise will turn it into a truck.
+
+Knowing when this happens is useful. It tells us where in the noise schedule guidance should act \citep{kynkaanniemi2024applying}, where the class balance of generated data is decided, and which errors in a learned model actually change what gets drawn. It also connects to a line of theory. For simple data such as a mixture of two Gaussian blobs, the moment of commitment is a sharp event that physicists would call a phase transition \citep{raya2023spontaneous,biroli2023generative,biroli2024dynamical,li2024critical,sclocchi2025phase}.
+
+Measuring commitment in a real, trained model raises two practical questions that the theory hides.
+
+\emph{Whose commitment do we mean?} One option is to look at the whole population of half-finished images and ask when they visibly split into two groups, for example ``cat-like'' and ``dog-like''. That is cheap, but what you see depends on how you choose to measure ``cat-likeness''. The other option is to look at one image at a time and ask how certain its eventual outcome already is. That is exact, but expensive. We use both and check one against the other.
+
+\emph{Compared with what?} A model can only commit ``wrongly'' relative to its training data. So we need a fair way to compare the model's behaviour with the data's, and evidence that this comparison would actually notice an error if one existed.
+
+We study CIFAR-10 \citep{krizhevsky2009learning}, with NVIDIA's EDM models \citep{karras2022elucidating} as the main subject and the original DDPM model \citep{ho2020denoising} as a second, older model family. Our findings are:
+\begin{enumerate}[leftmargin=*]
+\item \textbf{Coarse decisions come first.} An image settles ``vehicle or animal?'' at about twice the noise level at which it settles ``which animal?'' (1.75--2.5 times, depending on how strictly ``settled'' is defined). The cheap population-level measurement puts class pairs in the right order (rank correlation 0.73--0.88), but its absolute timing depends on an arbitrary choice of scale, so we use it only for ordering (Section~\ref{sec:cifar}).
+\item \textbf{The comparison is fair, and it can see errors.} On a toy problem where the right answer is known, it recovers that answer exactly. When we deliberately plant small errors in the data, it detects them (Sections~\ref{sec:compare} and~\ref{sec:power}).
+\item \textbf{EDM commits like its data, except for class proportions.} Reweighting the data to match how often the model generates each class reproduces the model's behaviour pair by pair, as closely as two halves of the data agree with each other. A class-conditional EDM model sampled with equal numbers of each class matches the data with no reweighting at all (Section~\ref{sec:edm}).
+\item \textbf{Fixing the proportions fixes the commitment.} Gently steering the sampler towards the right class proportions, with a classifier and no tuning, makes the model's commitment match the data, and FID does not get worse (Section~\ref{sec:correct}).
+\item \textbf{Part of ``the model's'' imbalance belongs to the sampler.} A 256-step stochastic sampler roughly doubles the class imbalance compared with the same network sampled more carefully (Section~\ref{sec:sampler}).
+\item \textbf{A weaker model makes an additional error.} DDPM shows the same class-proportion effect, but it also commits about 20\% too late, an error that is not about proportions at all (Section~\ref{sec:ddpm}).
+\end{enumerate}
+
+\begin{table}[t]
+\centering
+\caption{Key terms, in the order they appear.}
+\label{tab:glossary}
+\small
+\begin{tabular}{p{3.6cm}p{11.4cm}}
+\toprule
+term & meaning \\
+\midrule
+noise level $\sigma$ & How much Gaussian noise is mixed into an image. Generation starts at a large $\sigma$ (pure noise) and ends near $\sigma=0$ (a clean image). Higher noise means \emph{earlier} in generation. \\
+commitment & The point in generation after which the final class of an image is effectively fixed. \\
+committor & For a half-finished image, the probability that generation continued from it ends in a given class. Estimated by restarting generation many times from the same point. \\
+decision noise level & The noise level below which a trajectory's outcome is settled, i.e. its committor stays close to 0 or 1. \\
+order parameter $m$ & A single number that says how ``class $a$-like versus class $b$-like'' an image is. We use a classifier's log-odds. \\
+density transition $\sbif$ & The noise level at which the distribution of $m$ across many images splits from one hump into two. \\
+fold, pitchfork & The two shapes such a split can take: lopsided (one class first, the other appears later) or symmetric (both appear together). \\
+asymmetry $h$ & How lopsided the split is. $h=0$ is perfectly symmetric; $|h|=0.08$ is the lopsidedness of a 54/46 class split. \\
+class mass & How often each class is generated. A model with the wrong class mass makes some classes too often. \\
+mass-matching & Reweighting the training data so its class proportions equal the model's, then comparing. \\
+rebalancing & Reweighting the model's samples so that two classes carry equal weight, then comparing. \\
+class-block interval & A confidence interval computed by resampling whole classes, since each class appears in nine of the 45 class pairs. \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\textwidth]{figs/fig1_fold.pdf}
+\caption{Two ways a population of images can split into two classes. We follow the distribution of an order parameter $m$ (``how $a$-like versus $b$-like'') for a mixture of two Gaussian classes centred at $m=\pm1$, as noise is removed. The horizontal axis is $\tau$, the noise variance in units of the class separation, so generation moves from right to left. Black lines are the peaks of the distribution, red lines its dips. (a) With equal numbers of each class, the single peak splits symmetrically into two: a pitchfork. (b) With 75\% of one class, the single peak simply becomes the majority class, and the minority class appears later, suddenly, as a new peak with a dip next to it: a fold. (c) The distribution itself in case (b), before, at and after the split.}
+\label{fig:fold}
+\end{figure}
+
+\section{Two Ways to Describe Commitment}
+\label{sec:background}
+
+\para{Diffusion models in one paragraph.}
+Take a clean image $x_0$ and add Gaussian noise of standard deviation $\sigma$: $x_\sigma=x_0+\sigma\varepsilon$. A diffusion model is a network $D(x,\sigma)$ trained to guess the clean image from the noisy one, that is, $D(x,\sigma)\approx\E[x_0\mid x_\sigma=x]$. From this guess one can compute the \emph{score}, the direction in which noisy images become more likely: $\nabla\log p_\sigma(x)=(D(x,\sigma)-x)/\sigma^2$. To generate an image, start from pure noise at a large $\sigma$ and repeatedly move along the score while lowering $\sigma$. This can be done deterministically, by following an ordinary differential equation (the probability-flow ODE), or with some fresh noise injected at every step (the reverse-time SDE) \citep{song2021score,karras2022elucidating}. With a perfect score, both produce samples from the training distribution. They differ in a way that will matter in Section~\ref{sec:compare}.
+
+\para{The committor: one image at a time.}
+Pause the stochastic sampler at some noise level $\sigma$ and take the half-finished image $x$. Now restart generation from $x$ many times, each time with different random noise, and look at what comes out. If 11 of 12 restarts end as a horse, the image is nearly committed to ``horse''. If the outcomes are spread over several classes, it is not yet committed. The probability $q_c(x,\sigma)$ that a restart ends in class $c$ is the \emph{committor}, a term from the study of rare transitions in chemistry and physics \citep{e2010transition}. It describes a single image, needs no choice of measuring stick, and can be estimated simply by counting outcomes. Its drawback is cost, since every estimate needs many restarts. One fact makes it especially useful: for a perfect model, the committor of a noisy image is exactly the posterior probability of each class given that noisy image, $P(c\mid x_\sigma=x)$, under the training data (Appendix~\ref{app:joint}). A classifier trained on noisy data estimates that posterior, so we can check whether a model's committor matches what the data say it should be.
+
+\para{The density transition: the whole population at once.}
+The cheaper description looks at many images together. For a pair of classes, say cat ($a$) and dog ($b$), pick a single number $m$ that says how cat-like versus dog-like an image is, scaled so that clean cats sit near $+1$ and clean dogs near $-1$. We call $m$ an \emph{order parameter}. At high noise, every image looks equally ambiguous, and the distribution of $m$ over many noisy images has a single hump in the middle. At low noise, the cats and dogs separate, and the distribution has two humps. The noise level at which the second hump first appears is the \emph{density transition} $\sbif$.
+
+\para{Pitchforks and folds.}
+How does one hump become two? Figure~\ref{fig:fold} shows the two possibilities. If the two classes are perfect mirror images (same size, same spread), the hump splits evenly into two, a \emph{pitchfork}. If they are not, which is always the case for real data, the hump drifts towards one class and simply becomes it, and the other class appears later, suddenly, as a new hump. This is a \emph{fold}. Folds are the generic case \citep{stancevic2026information,achilli2026theory,marta2026speciation}. Both shapes are captured by one simple formula. Write $f(m)$ for the slope of the log-distribution of $m$; it is positive to the left of a hump and negative to its right. Near the split,
+\begin{equation}
+f(m)\approx h+a\,m-b\,m^3,\qquad b>0,
+\label{eq:cusp}
+\end{equation}
+which is the textbook ``cusp'' normal form \citep{golubitsky1985singularities,strogatz2018nonlinear}. Each coefficient has a plain meaning. $a$ measures how strongly the noise is pushing the classes apart, and it grows as noise is removed. $b$ keeps the two humps at a finite distance. $h$ measures how lopsided the split is. With $h=0$ the split is a pitchfork. With $h\ne0$ it is a fold, and the second hump appears exactly when
+\begin{equation}
+4a^3=27\,b\,h^2.
+\label{eq:fold}
+\end{equation}
+If $h>0$ the class at $+1$ is the one present from the start (Appendix~\ref{app:cusp}).
+
+\para{Why class proportions matter, and why that alone proves little.}
+Suppose one class is generated more often than the other. In Figure~\ref{fig:fold}b, that is exactly what makes the split lopsided: the majority class wins the single hump. The effect can be made precise. If $m$ is a log-likelihood ratio, i.e.\ a well-calibrated classifier's log-odds, then changing the class proportions from $w_a{:}w_b$ shifts $h$ by half the change in $\log(w_a/w_b)$ (Appendix~\ref{app:tanh}). So $|h|=0.08$ is the lopsidedness that a 54/46 class split would produce. Equation~\eqref{eq:fold} then adds a second consequence. A more lopsided split (larger $|h|$) needs a stronger push (larger $a$) before the second hump can appear, so it happens later in generation, at a lower noise level:
+\begin{equation}
+\Delta\log\sbif\;\approx\;-\frac{3\,(b/4)^{1/3}}{s}\;\Delta|h|^{2/3},\qquad s=-\frac{\mathrm da}{\mathrm d\log\sigma}.
+\label{eq:shift}
+\end{equation}
+This is a useful sanity check, but it carries a warning. Any model that generates the wrong class proportions will show linked errors in lopsidedness and in timing, \emph{whatever else is wrong with it}. Seeing those linked errors therefore cannot prove that proportions are the \emph{only} problem. The decisive test, in Section~\ref{sec:edm}, is to give the data the model's proportions and check whether everything else then matches.
+
+\section{How We Measure}
+\label{sec:instruments}
+
+\subsection{Committors, by restarting generation}
+\label{sec:branching}
+
+We generate 320 images with the unconditional EDM model, using the stochastic sampler. We pause each one at 12 noise levels between $7.9$ and $0.1$, spaced by a factor of about $1.5$. From every paused image we restart generation 12 times, 46{,}080 restarts in all, and identify the class of each finished image with a separate, highly accurate classifier: a Vision Transformer fine-tuned on CIFAR-10 \citep{dosovitskiy2021image}, with 98.4\% test accuracy. We say a trajectory has \emph{decided} its superclass (vehicle or animal) or its class at a noise level if at least 11 of the 12 restarts from that level, and from every lower level, agree with its own final outcome.
+
+For a pair of classes we pool information across trajectories. Among all trajectories that end as $a$ or $b$, we look at the restarts that land in $a$ or $b$ and ask what fraction land on the \emph{other} class of the pair. We call this the cross-over rate. A pair is decided below the noise level from which the cross-over rate stays under a threshold. We report three thresholds ($0.05$, $0.1$ and $0.2$), because the exact noise level depends on how strict one is. We tested this procedure on a toy problem with six Gaussian classes, where committors are known exactly (Appendix~\ref{app:testbed}). The pooled estimate matches its exact target with no bias from using only 12 restarts. Different reasonable definitions of ``decided'' differ by about one step of our noise grid.
+
+\subsection{Density transitions, with a classifier as the measuring stick}
+\label{sec:density}
+
+To measure how cat-like versus dog-like a noisy image is, we need an order parameter. For simple data like handwritten digits, a straight line through pixel space works. For CIFAR-10 it does not: along the best straight lines, the classes overlap so much that the distribution never shows two humps (Appendix~\ref{app:linear}). So we use a classifier. We train a ResNet that takes a noisy image and its noise level and outputs class probabilities (85\% accurate on nearly clean test images, 64\% at $\sigma=1$). For a pair of classes, the order parameter is the classifier's log-odds $z=\ell_a-\ell_b$, rescaled at each noise level so that the average $a$ sits at $+1$ and the average $b$ at $-1$. We estimate the distribution of $z$ across noisy images with a smooth histogram (a kernel density estimate), scan 56 noise levels from high to low until a second hump appears, and fit Equation~\eqref{eq:cusp} there to read off $h$.
+
+Two details keep the numbers honest. First, statistics that pool many pairs need special care: each class appears in nine of the 45 pairs, so the pairs are not independent. Our confidence intervals therefore resample whole classes (\emph{class-block intervals}, 1{,}000 resamples), and per-pair estimates are medians of 100 bootstrap resamples. Second, an estimated $h$ is never exactly zero, so we need to know how large it can be by chance. We built pairs of image sets that are \emph{exactly} symmetric by construction: a class and its vertical flip, or a class and a copy with red and blue channels swapped. We passed them through a classifier trained on them. They give $|h|$ up to $0.047$, which serves as our noise floor (Appendix~\ref{app:coord}).
+
+The classifier is a measuring stick, and the scale of the stick matters. If we replaced the log-odds $z$ by a squashed version such as $\tanh(z/2)$, every density transition would move, by a median factor of $4.5$. What does \emph{not} depend on the stick is the ordering of class pairs, which is stable across two very different classifier architectures ($r=0.96$) and a recalibration ($r=0.97$). Nor does any comparison between a model and its data \emph{made with the same stick}, because two identical distributions look identical under any stick. We rely only on these robust quantities.
+
+\subsection{Comparing a model with its data}
+\label{sec:compare}
+
+To compare a model with its training data, we record the classifier's log-odds along the model's generation trajectories and compare them with the log-odds of real images that have had noise added to them. This is only fair if a perfect model would give exactly the same result as the data. For the stochastic sampler it does:
+
+\begin{proposition}
+\label{prop:joint}
+Let $w_c$ be any classifier's probability for class $c$ on nearly clean images (noise level $\sigma_{\min}$), and let $\sigma>\sigma_{\min}$. With a perfect score, the distribution of $\phi(x_\sigma)$ along reverse-SDE trajectories, with each trajectory weighted by $w_a+w_b$ at its end point, equals the distribution of $\phi(x_\sigma)$ obtained by adding noise to real images, with each image weighted by $w_a+w_b$ at $\sigma_{\min}$.
+\end{proposition}
+
+The intuition is that the stochastic sampler, run with a perfect score, is the noising process played backwards in time \citep{anderson1982reverse,haussmann1986time}. Any statement about how an image at one noise level relates to the same image at another noise level is therefore identical on both sides (Appendix~\ref{app:joint}). The deterministic ODE sampler does not have this property: it produces the right distribution at each noise level, but it links noise levels together differently. We confirmed both facts on a toy problem with three Gaussian classes and an exactly known score. The SDE comparison returns a ratio of $1.00$ ($[0.94,1.07]$), meaning no difference, while the ODE returns $1.36$ ($[1.20,1.54]$). Model and data are always compared at the same sample size, because the smoothing in our histograms depends on it.
+
+Two kinds of reweighting appear below. \emph{Rebalancing} rescales the model's samples so that the two classes of a pair carry equal weight. \emph{Mass-matching} goes the other way: it reweights the \emph{data} so that its class proportions equal the model's. The second is the cleaner test, because it leaves the model untouched.
+
+\subsection{A check of the measuring pipeline}
+\label{sec:check}
+
+If the pipeline works, changing class proportions by a known amount should change $h$ by half the change in log class ratio, regardless of any model. We checked this on the data alone, reweighting the test images by random known class factors. The slope was $1.00$ ($r=0.98$, over the 38 pairs whose split was detected both before and after reweighting). Imposing a known imbalance on the model through guidance gave a slope of $1.05$. These numbers confirm that the classifier behaves like a calibrated likelihood ratio and that the cubic fit is accurate. They say nothing about whether any model is right.
+
+\subsection{Can the comparison see errors?}
+\label{sec:power}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.9\textwidth]{figs/fig_plant.pdf}
+\caption{Can the comparison detect errors? We distort the real data on purpose, by reweighting images within each class towards more typical-looking examples. Class proportions stay unchanged. We then compare distorted with clean data exactly as we compare a model with data. The horizontal axis is the size of the distortion (KL divergence, nats per class). (a) Ratio of split noise levels, averaged over pairs, with class-block intervals: the timing of the split reacts to small distortions. (b) Agreement of the lopsidedness $h$: it barely reacts until the distortion is large. Blue: all classes distorted; red: only deer.}
+\label{fig:plant}
+\end{figure}
+
+A test that always says ``looks fine'' is worthless. To find out what ours can and cannot see, we planted errors on purpose. Within each class, we reweighted real images towards the more typical-looking ones, which makes classes tighter, without changing how many images each class has. Then we compared the distorted data with clean data, exactly as we compare a model with data (Figure~\ref{fig:plant}). The two quantities we measure turn out to be very different in sensitivity.
+\begin{itemize}[leftmargin=*]
+\item \emph{The timing of the split is sensitive.} A distortion of only $0.027$ nats per class moves split noise levels by a factor of $1.18$ ($[1.10,1.26]$).
+\item \emph{The lopsidedness is not.} Its agreement with clean data stays at $0.98$ for distortions up to $0.12$ nats, and drops to $0.88$ only at $0.53$ nats.
+\item \emph{A distortion in one class shows up mainly in that class's pairs.} Distorting deer alone barely moves the average timing, but it increases the spread across pairs and changes the lopsidedness of several deer pairs.
+\end{itemize}
+One limitation is built in. The classifier only looks along the ``which class is it?'' direction, so errors in other aspects of images, such as texture or style within a class, are invisible to this test.
+
+\section{Experimental Setup}
+\label{sec:setup}
+
+This section collects every detail needed to reproduce our experiments; the code is available at \url{https://github.com/nssprogrammer/diffusion-commit}. Further details, and the checks behind several choices, are in the appendices.
+
+\para{Data.}
+All experiments use CIFAR-10 \citep{krizhevsky2009learning}: 50{,}000 training and 10{,}000 test images of $32\times32$ pixels in ten classes, with pixel values scaled to $[-1,1]$. Noise levels $\sigma$ are on this scale. The \emph{data reference} for every comparison is the test set, with four independent noise draws per image (40{,}000 noisy images per noise level), so the classifier is never evaluated on images it was trained on.
+
+\para{Classifiers.}
+We use four classifiers, each for a different job.
+\begin{itemize}[leftmargin=*]
+\item \emph{The census classifier} defines the order parameter. It is a ResNet with an input convolution of 64 channels and five residual blocks (64, 128, 128, 256 and 256 channels, two with stride 2), with BatchNorm and SiLU activations. It takes the noise level through a sinusoidal embedding of $\frac14\log\sigma$, followed by a small MLP and a scale-and-shift (FiLM) in every block \citep{perez2018film}. It is trained on the training set for 25 epochs with AdamW (learning rate $2\times10^{-3}$ on a one-cycle schedule, weight decay $5\times10^{-4}$, batch size 256), with horizontal flips and noise levels drawn log-uniformly between $0.05$ and $10$. Its test accuracy is 85.2\%, 81.8\%, 76.0\%, 64.2\%, 48.6\% and 34.4\% at $\sigma=0.05$, $0.25$, $0.5$, $1$, $2$ and $4$.
+\item \emph{A second architecture} checks that results do not depend on the census classifier. It is a plain VGG-style network with GroupNorm, which takes the noise level by rescaling its input by $1/\sqrt{1+\sigma^2}$ and appending $\frac14\log\sigma$ as an extra input channel.
+\item \emph{The null classifier} has the census architecture with 30 outputs: the ten classes, their vertical flips, and their red--blue channel swaps. It is used only to build the noise floor of Section~\ref{sec:density}.
+\item \emph{The labelling classifier} labels finished images: a ViT-Base fine-tuned on CIFAR-10 at $224\times224$ resolution \citep{dosovitskiy2021image}, with 98.4\% test accuracy. It is independent of everything else in the pipeline.
+\end{itemize}
+
+\para{Diffusion models.}
+NVIDIA's pretrained EDM checkpoints for CIFAR-10 \citep[unconditional and class-conditional, VP preconditioning, 56M parameters;][]{karras2022elucidating}, and the original DDPM checkpoint \citep{ho2020denoising}. DDPM is wrapped as described in Section~\ref{sec:ddpm}.
+
+\para{Samplers.}
+Unless stated otherwise, we sample with the reverse-time SDE using 256 Euler--Maruyama steps on the EDM noise schedule (exponent $\rho=7$), from $\sigma=80$ down to $\sigma_{\min}=0.05$, in half precision, and finish with one denoising step. For comparison we also use EDM's standard deterministic Heun sampler (18 steps, 35 network evaluations, down to $\sigma=0.002$) and the stochastic sampler with 512 and 1{,}024 steps, all in full precision.
+
+\para{Recording.}
+Along every generated trajectory we record the census classifier's logits at the 68 schedule steps between $\sigma=7.95$ and $\sigma=0.086$. At the end, the classifier's class probabilities at $\sigma_{\min}$ give each trajectory a weight for each class. Data-reference images are treated identically: noised first to $\sigma_{\min}$ (for their class weights) and then onwards (for their logits).
+
+\para{Density transitions.}
+For each class pair, the log-odds are standardised at each noise level using the data reference, so that the two class means sit at $\pm1$, and the same standardisation is applied to the model. The distribution is estimated with a Gaussian kernel density (bandwidth 1.5 times Silverman's rule) on a grid of 4{,}001 points over $[-4,4]$. Peaks closer than $0.03$, or separated by less than $0.05$ nats of log-density, are merged. The census scans 56 noise levels, spaced logarithmically from 20 down to $0.08$. Model comparisons scan the 68 recorded levels. The transition $\sbif$ is the first level with two peaks after at least one level with a single peak. The asymmetry $h$ comes from a density-weighted fit of Equation~\eqref{eq:cusp} over $|m|<1$ at that level.
+
+\para{Committors.}
+We use 320 trajectories of the unconditional EDM model, paused at 12 noise levels between $7.95$ and $0.099$, with 12 restarts from each paused image (46{,}080 restarts). Finished images are labelled by the ViT. Decisions use the 11-of-12 rule for superclass and class, and pooled cross-over rates with thresholds $0.05$, $0.1$ and $0.2$ for pairs. A level counts only if at least 20 restarts landed in the pair.
+
+\begin{table}[t]
+\centering
+\caption{All sampling runs. ``Images'' is the number of generated trajectories. Unless noted, the sampler is the 256-step stochastic sampler in half precision.}
+\label{tab:runs}
+\footnotesize\setlength{\tabcolsep}{4pt}
+\begin{tabular}{llrl}
+\toprule
+model & sampler and modification & images & purpose \\
+\midrule
+EDM uncond. & -- & 14{,}500 & main comparison (Sec.~\ref{sec:edm}) \\
+EDM uncond. & -- (replicate) & 3{,}500 & replication \\
+EDM uncond. & -- & 320 (+46{,}080 restarts) & committors (Sec.~\ref{sec:cifar}) \\
+EDM cond. & equal labels & 4{,}000 & proportions right by design \\
+EDM uncond. & Heun, 18 steps, full precision & 10{,}000 & standard sampler \\
+EDM uncond. & 256 / 512 / 1{,}024 steps, full prec. & 2{,}000 / 1{,}500 / 1{,}000 & sampler (Sec.~\ref{sec:sampler}) \\
+EDM uncond. & exact correction, 2 rounds & 2{,}500 each & correction (Sec.~\ref{sec:correct}) \\
+EDM uncond. & first-order corr.; imposed imbalance & 3{,}500 each & pipeline check \\
+EDM uncond. & score $\times\lambda$, $\lambda\in\{0.995,0.98,0.95\}$ & 2{,}500 each & corruption (App.~\ref{app:pretrained}) \\
+EDM uncond. & noise level $\times\kappa$, $\kappa\in\{1.1,1.25\}$ & 2{,}500 each & corruption \\
+DDPM & wrapped as EDM denoiser & 3{,}000 & second family (Sec.~\ref{sec:ddpm}) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\para{Interventions.}
+The class-proportion correction of Equation~\eqref{eq:tilt} uses the census classifier at every sampling step. Its target is the classifier's class proportions on the test set, and the model's proportions come from the main run. The second round raises the target for each class by the ratio by which the first round fell short. The graded corruptions multiply the learned score by $\lambda$, or pass the denoiser the noise level $\kappa\sigma$ instead of $\sigma$, at every step (Table~\ref{tab:runs}).
+
+\para{Planted errors.}
+Within each class we reweight test images by $e^{\beta u}$, where $u$ is the census classifier's standardised margin (true-class logit minus the largest other logit) at the lowest recorded noise level. Weights are normalised so that each class keeps its total weight. We use $\beta\in\{0.25,0.5,1\}$ for all classes and $\beta\in\{0.5,1,2\}$ for deer alone. The distorted half of the test set is compared with the other, undistorted half.
+
+\para{Statistics.}
+Per-pair values are medians of bootstrap resamples within each class: 100 for the main comparisons, 60 for planted errors and 30 for corruptions. Intervals for anything averaged or correlated over pairs come from 1{,}000 class-block resamples, which resample the ten classes with replacement and weight each pair by the product of its classes' multiplicities. Census intervals per pair use 1{,}000 resamples. Multiple testing over pairs is controlled with the Benjamini--Hochberg procedure at 5\%. Reliability ceilings use split halves and the Spearman--Brown formula. Model and data are always compared at the same sample size.
+
+\para{Image quality.}
+FID \citep{heusel2017gans} uses Inception pool features of the generated images against the 50{,}000 training images. Because FID is biased upwards at small sample sizes, we compare FID only between runs of the same size.
+
+\para{Hardware and software.}
+All experiments ran on a single NVIDIA T4 GPU (16 GB) in cloud notebooks, about 80 GPU-hours in total, using PyTorch. The statistical re-analyses ran on CPU. Appendix~\ref{app:compute} breaks down compute and lists dataset and checkpoint licences.
+
+\section{How CIFAR-10 Commits}
+\label{sec:cifar}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\textwidth]{figs/fig_committor.pdf}
+\caption{Decisions of individual images in the unconditional EDM model. (a) For images paused at each noise level (high noise on the left), the fraction of 12 restarts that end in the same superclass (blue) or the same class (orange) as the original. Superclass agreement rises first. (b) Median noise level at which pairs of each kind are decided, for three thresholds on the cross-over rate (blue), and the median density transition of the same pairs (black). Decisions and density transitions agree on the order, coarse before fine, but not on the absolute noise level.}
+\label{fig:committor}
+\end{figure}
+
+\begin{table}[t]
+\centering
+\caption{When pairs are decided, and how well the cheap density transition tracks it. Left: median decision noise level by kind of pair, for three thresholds on the cross-over rate, and the ratio between vehicle/animal and animal/animal pairs. Right: rank correlation between decision levels and density transitions (class-block 95\% interval), and their median ratio, under two choices of measuring stick.}
+\label{tab:decisions}
+\footnotesize\setlength{\tabcolsep}{3.5pt}
+\begin{tabular}{c|cccc|cc|cc}
+\toprule
+ & \multicolumn{4}{c|}{decision noise level (median)} & \multicolumn{2}{c|}{stick: log-odds $z$} & \multicolumn{2}{c}{stick: $\tanh(z/2)$} \\
+threshold & veh./anim. & veh./veh. & anim./anim. & ratio & rank corr. & ratio & rank corr. & ratio \\
+\midrule
+0.05 & 2.16 & 1.61 & 0.87 & 2.5 & 0.74 [0.47, 0.91] & 1.6 & 0.73 [0.38, 0.93] & 0.39 \\
+0.10 & 3.15 & 2.60 & 1.52 & 2.1 & 0.84 [0.66, 0.93] & 2.8 & 0.88 [0.71, 0.97] & 0.58 \\
+0.20 & 5.29 & 4.01 & 3.02 & 1.8 & 0.81 [0.54, 0.94] & 4.2 & 0.87 [0.61, 0.96] & 0.93 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\para{Coarse decisions come first.}
+Individual images settle ``vehicle or animal?'' below a median noise level of $2.4$, and their exact class below $1.1$ (Figure~\ref{fig:committor}a). Pair by pair, vehicle/animal pairs such as airplane/frog are decided at 1.8--2.5 times the noise level of animal/animal pairs such as cat/deer, depending on the threshold (Table~\ref{tab:decisions}). This coarse-to-fine order agrees with earlier observations on trained models \citep{handke2025measuring,sclocchi2025phase} and with theory for data with nested classes \citep{achilli2026theory}. A pair can sometimes be decided before the coarser question. An image may have ruled out ``automobile'' while ``truck'' and ``deer'' are both still open.
+
+\para{The cheap measurement gets the order right but not the timing.}
+Density transitions and decision levels rank the 45 pairs in nearly the same order, with rank correlations of 0.73--0.88 for every threshold and both measuring sticks. Their ratio, however, depends on the stick. With the log-odds, density transitions come 1.6--4.2 times later than decisions, and more so for fine distinctions. With the squashed stick $\tanh(z/2)$, which is the pairwise committor scale, the ratio is the same for all kinds of pairs and close to one at the loosest threshold. So the log-odds census in Figure~\ref{fig:census}a, where vehicle/animal splits happen $5.8$ times earlier than animal/animal splits (class-block interval $[3.9,8.1]$), exaggerates how strongly hierarchical commitment is. The \emph{order} is real. Most of it can be predicted from simple image statistics: a Gaussian model built from each class's average image and pixel covariance predicts the transitions with $r=0.89$.
+
+\para{Splits are only mildly lopsided.}
+The typical $|h|$ is $0.08$, the lopsidedness of a 54/46 class split. After correcting for testing 44 pairs at once (Benjamini--Hochberg at 5\%), 19 pairs are more lopsided than the noise floor, and 12 remain so, with the same sign, under two different measuring sticks (Figure~\ref{fig:census}b).
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\textwidth]{figs/fig2_census.pdf}
+\caption{The population view of CIFAR-10, measured with the classifier's log-odds. (a) Noise level of the density transition for each class pair, grouped by kind of pair, with 95\% bootstrap intervals; horizontal bars are medians. (b) Lopsidedness $h$ of each pair under the raw log-odds and a recalibrated version. Shaded bands show the noise floor from exactly symmetric pairs. Red points are lopsided beyond the floor under both, with the same sign.}
+\label{fig:census}
+\end{figure}
+
+\section{What the EDM Model Gets Wrong}
+\label{sec:edm}
+
+We now turn to NVIDIA's pretrained unconditional EDM model for CIFAR-10 \citep[56M parameters;][]{karras2022elucidating}. We sample it with the stochastic sampler (256 Euler--Maruyama steps, half precision), and also study its class-conditional sibling. The main run has 14{,}500 generated images, the others 2{,}500--4{,}000. Each is compared with the data at the same sample size.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\textwidth]{figs/fig4_pretrained.pdf}
+\caption{The unconditional EDM model, before any correction. (a) Density transition noise levels of the model against the data's, with 95\% bootstrap intervals; the dashed line is equality. (b) The model's lopsidedness $h$ for each pair against the difference in how much the model over-produces the two classes. (c) How often each class is generated, relative to the test set, under our 256-step sampler and EDM's standard 18-step sampler, as judged by our classifier and by an independent ViT.}
+\label{fig:pretrained}
+\end{figure}
+
+\subsection{At first sight, the model looks only partly right}
+
+The model generates some classes too often (horse, automobile) and others too rarely (bird, deer), as both classifiers agree (Figure~\ref{fig:pretrained}c). Its split noise levels scatter around the data's, with no overall shift but a large spread across pairs: the standard deviation of the log ratio is $0.33$, against $0.21$ between two halves of the data. Its lopsidedness is essentially unrelated to the data's ($r=0.11$). Instead it follows the model's own class imbalance: the class it over-produces is the class that wins the split ($r=0.76$, Figure~\ref{fig:pretrained}b). The timing and lopsidedness errors are also linked as Equation~\eqref{eq:shift} predicts (Figure~\ref{fig:direct}a). Their correlation is $-0.80$ (class-block interval $[-0.92,-0.48]$), and $-0.68$ when the two are measured on separate halves of the generated images, which rules out shared noise. The equation's prediction, which has no free parameters, tracks the measured timing errors with $r=0.71$, though with a slope of $0.65$ that we cannot fully explain. As Section~\ref{sec:background} warned, all of this is what wrong class proportions would produce, whatever else is wrong. So it does not settle the question.
+
+\subsection{The decisive test: give the data the model's class proportions}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\textwidth]{figs/fig_direct.pdf}
+\caption{Is the class imbalance the only error? (a) For each class pair of the uncorrected EDM model, the error in split timing against the error in lopsidedness, coloured by kind of pair. (b) How well the lopsidedness agrees with the data, for EDM as is, EDM against data reweighted to its class proportions (mass-matched), the class-conditional EDM with equal labels, EDM after correcting its proportions in the sampler, and DDPM against mass-matched data. The dotted line is the agreement between two halves of the data. (c) Average ratio of split noise levels over pairs, with class-block 95\% intervals. The grey band is the range expected between two halves of the data.}
+\label{fig:direct}
+\end{figure}
+
+\begin{table}[t]
+\centering
+\caption{Models compared with their data. ``Mass-matched'' data have been reweighted so that their class proportions equal the model's. ``Two halves of the data'' gives the agreement expected from sampling noise alone, at a matching sample size. Brackets are class-block 95\% intervals.}
+\label{tab:models}
+\footnotesize\setlength{\tabcolsep}{4pt}
+\begin{tabular}{llccc}
+\toprule
+model & compared with & agreement of $h$ & spread of timing error & timing ratio \\
+\midrule
+EDM, $n{=}14{,}500$ & the data & 0.11 [$-0.47$, 0.68] & 0.332 [0.16, 0.42] & 1.00 \\
+ & mass-matched data & \textbf{0.974} [0.94, 0.99] & \textbf{0.178} [0.09, 0.25] & 1.115 [1.01, 1.23] \\
+ & two halves of the data & 0.981 [0.93, 0.99] & 0.208 [0.12, 0.30] & --- \\
+\midrule
+EDM cond., equal labels & the data & 0.87 & 0.223 & 1.00 [0.92, 1.18] \\
+\quad $n{=}4{,}000$ & two halves of the data & --- & 0.211 & 1.07 [0.98, 1.29] \\
+\midrule
+EDM, corrected sampler & the data & 0.889 [0.64, 0.98] & 0.254 [0.15, 0.35] & 1.017 \\
+\quad $n{=}2{,}500$ & mass-matched data & 0.946 [0.77, 0.99] & 0.239 [0.14, 0.30] & 1.069 [0.90, 1.30] \\
+\midrule
+DDPM, $n{=}3{,}000$ & the data & 0.52 [$-0.38$, 0.95] & 0.405 [0.22, 0.53] & 0.60 \\
+ & mass-matched data & \textbf{0.985} [0.89, 1.00] & 0.307 [0.13, 0.45] & \textbf{0.799} [0.66, 0.93] \\
+ & two halves of the data & 0.980 & 0.206 & --- \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Here is the test. Take the real data and reweight it so that each class appears as often as it does in the model's samples. Nothing about the model changes. If class proportions are the model's only commitment error, these mass-matched data should behave exactly like the model, pair by pair. They do (Table~\ref{tab:models}). The lopsidedness agrees at $0.974$, the same as the $0.981$ between two halves of the data. The spread of timing errors is $0.178$, at or below the $0.208$ between two halves of the data. The only thing left over is a small shift: the model splits about 11\% earlier in generation than mass-matched data ($[1.01,1.23]$). Our planted-error test tells us how small that is: the same shift would come from distorting every class by only about $0.03$ nats. After the proportions are corrected inside the sampler (Section~\ref{sec:correct}), the shift is $1.02$ against the raw data and $1.07$ ($[0.90,1.30]$) against mass-matched data. That interval contains both 1 and the uncorrected value, so we cannot tell whether the shift survives the correction.
+
+\subsection{A model that gets the proportions right by design}
+
+The class-conditional EDM model can be told which class to draw. If we ask for equal numbers of each class, the class proportions are right by construction: their error by the ViT is $0.016$, below the $0.04$ expected from sampling noise at this sample size. With no reweighting of any kind, this model splits at the same noise levels as the data (median ratio $1.00$, $[0.92,1.18]$), with a pair-to-pair spread of $0.223$ against $0.211$ between two halves of the data. Its lopsidedness agrees with the data's at $0.87$.
+
+\subsection{Is it the network or the sampler?}
+\label{sec:sampler}
+
+\begin{table}[t]
+\centering
+\caption{Class imbalance (average $|\log|$ of generated over expected frequency, by the ViT) of the same EDM network under different samplers. ``Noise floor'' is the value expected from random sampling alone at that sample size, with perfectly balanced classes.}
+\label{tab:sampler}
+\small
+\begin{tabular}{lcccc}
+\toprule
+sampler & precision & images & class imbalance & noise floor \\
+\midrule
+stochastic, 256 steps & half & 2{,}500--3{,}500 & 0.12--0.15 & 0.040--0.048 \\
+stochastic, 256 steps & full & 2{,}000 & 0.171 & 0.054 \\
+stochastic, 512 steps & full & 1{,}500 & 0.132 & 0.063 \\
+stochastic, 1{,}024 steps & full & 1{,}000 & 0.137 & 0.076 \\
+deterministic, 18 steps (EDM default) & full & 10{,}000 & 0.095 & 0.024 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+How much of the imbalance belongs to the trained network and how much to our sampler? Some to each (Table~\ref{tab:sampler}). Numerical precision makes no difference. Taking more steps does: going from 256 to 512 steps reduces the imbalance, and going on to 1{,}024 steps does not reduce it further, which leaves it close to EDM's standard deterministic sampler once sampling noise is accounted for. The same classes are over- and under-produced throughout. So the network itself has a class imbalance of roughly 10--15\%, and our coarse 256-step sampler roughly doubles it. Since our comparisons concern the images actually generated, they hold either way. ``The model'' in this paper means the network together with its sampler. Similar skews have been reported for attributes such as gender and race in unconditional diffusion models trained on balanced face data \citep{perera2023analyzing,pal2023gaussian}. Here we see the same effect for classes, and we see exactly where it shows up during generation.
+
+\subsection{Does the model's committor match the data?}
+\label{sec:fidelity}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\textwidth]{figs/fig_massnoise.pdf}
+\caption{The model's decisions, one image at a time. (a) Along the model's own trajectories, the class proportions that our classifier sees at each noise level, relative to uniform. Dots on the right are the final proportions. The imbalance becomes visible as superclasses are decided (dotted lines). (b) How far the model's committors are from the data's class probabilities, beyond what 12 restarts can resolve, with 95\% bootstrap bands: as is (blue), and after adjusting for the model's class proportions (orange), which makes no difference. The dashed line is the level reached at low noise, which reflects our classifier's own mistakes.}
+\label{fig:massnoise}
+\end{figure}
+
+For a perfect model, the committor of every half-finished image equals the class probability that our noise-aware classifier assigns to it. On average the two agree well: regressing one on the other gives slopes between $0.96$ and $1.11$ at every noise level. Their distance is a little larger than our classifier's own error level, by up to about $0.06$ in total variation, around $\sigma\approx1.1$, which is where decisions are being made (Figure~\ref{fig:massnoise}b). This excess is \emph{not} explained by class proportions: adjusting for them changes it by less than $0.01$. The classifier's own error level also varies with noise level, by about as much, so we cannot say whether this small excess comes from the model or from the classifier. We leave it open. Figure~\ref{fig:massnoise}a shows something else: the model's class imbalance becomes visible to the classifier between $\sigma=2.4$ and $1.6$, as superclasses are being decided. The classifier is weak at high noise, so this tells us where the imbalance becomes \emph{visible}, not necessarily where it starts.
+
+\section{Correcting the Class Proportions}
+\label{sec:correct}
+
+If the problem is class proportions, can we fix it during sampling? We can nudge the sampler towards target proportions $f^t$ by adding a small correction to the score at every step. The exact correction depends on the model's own class probabilities. Assuming, as the previous section supports, that the model's classes have the right shapes and only the wrong proportions, those probabilities can be computed from a classifier trained on the data:
+\begin{equation}
+\nabla_x\Big[\operatorname{LSE}_c\big(\ell_c+\log\tfrac{f^t_c}{f^d_c}\big)-\operatorname{LSE}_c\big(\ell_c+\log\tfrac{f^m_c}{f^d_c}\big)\Big].
+\label{eq:tilt}
+\end{equation}
+Here $\ell_c$ are the classifier's logits, $f^d$ are the class proportions it was trained on, $f^m$ those the model generates, and LSE is log-sum-exp. This is classifier guidance with a strength fixed by theory, so there is nothing to tune. An earlier version of this correction used the data's class probabilities directly, which is right only to first order.
+
+\begin{table}[t]
+\centering
+\caption{Correcting the class proportions of the unconditional EDM model inside the sampler (2{,}500 images each, 256-step stochastic sampler). Class imbalance by our classifier and by the ViT; the sampling-noise floor at this size is $0.048$. FID at 2{,}500 images.}
+\label{tab:correct}
+\small
+\begin{tabular}{lcccc}
+\toprule
+run & imbalance (ours) & imbalance (ViT) & FID & $h$ vs data \\
+\midrule
+no correction & 0.134 & 0.119 & 12.93 & $\approx0$ \\
+first-order correction, 1 round & 0.076 & 0.083 & 12.68 & 0.56 \\
+exact correction (Eq.~\ref{eq:tilt}), 1 round & 0.093 & 0.107 & 12.95 & 0.54 \\
+exact correction, 2nd round & \textbf{0.051} & \textbf{0.074} & 12.98 & \textbf{0.89} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+One round of either version removes about half of the imbalance, and the exact version is no better than the first-order one (Table~\ref{tab:correct}). The toy problem shows the same thing at imbalances of this size (Appendix~\ref{app:testbed}). The remaining half comes from the classifier's own inaccuracy, and a second round, which aims to overshoot by what the first round missed, takes care of it. Our classifier's measured imbalance then falls to the level expected from sampling noise alone, and the ViT's to $0.074$, with no change in FID. And the model's commitment, measured with no reweighting at all, now matches the data's: the lopsidedness agrees at $0.89$ (up from about zero) and the split noise levels at a ratio of $1.02$ (Table~\ref{tab:models}). This is the most direct evidence in the paper that the class proportions were the problem: fixing them in the sampler fixes commitment.
+
+\para{Must the correction run during the whole of generation?}
+In the toy problem, applying the correction only during the noisy first part, or only during the cleaner second part, of generation each achieves part of the effect, and the two parts add up to roughly the whole (Table~\ref{tab:bands}). An earlier, smaller CIFAR-10 experiment seemed to show that neither half worked alone. That experiment used one split point and one random seed, and the effect it measured was smaller than its own noise, so we regard it as inconclusive and draw no conclusion about where on CIFAR-10 the correction must act.
+
+\begin{table}[t]
+\centering
+\caption{Applying the exact correction to only part of generation, on the toy six-class problem (20{,}000 images, mean $\pm$ SD over 3 seeds): fraction of the full correction achieved when correcting only at noise levels above, or only below, a split point $\sigma_1$.}
+\label{tab:bands}
+\small
+\begin{tabular}{lcccc}
+\toprule
+split point $\sigma_1$ & 0.5 & 1.0 & 2.0 & 4.0 \\
+\midrule
+correct only for $\sigma\ge\sigma_1$ (noisy part) & $0.96\pm0.03$ & $0.79\pm0.02$ & $0.32\pm0.02$ & $0.08\pm0.02$ \\
+correct only for $\sigma<\sigma_1$ (cleaner part) & $0.08\pm0.02$ & $0.43\pm0.02$ & $0.88\pm0.03$ & $0.99\pm0.03$ \\
+sum & 1.05 & 1.22 & 1.20 & 1.07 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{A Second Model: DDPM}
+\label{sec:ddpm}
+
+Is this story special to EDM? We ran the original DDPM model for CIFAR-10 \citep{ho2020denoising} through exactly the same pipeline. DDPM was trained with a different noise parameterisation, so we translate: at each noise level we use DDPM's nearest training noise level and convert its noise prediction into a clean-image guess, $D(x,\sigma)=x-\sigma_t\,\varepsilon_\theta(x\sqrt{\bar\alpha_t},t)$ with $\sigma_t=\sqrt{(1-\bar\alpha_t)/\bar\alpha_t}$. The noise levels differ by a median of $0.2\%$, at most $1.3\%$ above $\sigma=0.1$ and $2.6\%$ at the very lowest levels. That is far below the $10\%$ mismatch that visibly changes commitment in our corruption experiments (Appendix~\ref{app:pretrained}). DDPM is much more imbalanced than EDM, with an imbalance of $0.29$ by the ViT: frogs make up 19\% of its images, dogs and ships about 6\% each.
+
+The lopsidedness of DDPM's splits is, again, entirely explained by its class proportions: against mass-matched data the agreement is $0.985$ ($[0.89,1.00]$), as good as between two halves of the data (Table~\ref{tab:models}). The timing is not. Even against mass-matched data, DDPM splits at $0.80$ times the data's noise level ($[0.66,0.93]$), that is, later in generation, and with more pair-to-pair spread ($0.31$ against $0.21$). Our planted-error test showed that timing reacts to distortions of a few hundredths of a nat per class. This looks like that kind of error, in the direction of classes that are broader and overlap more than they should. So the method does not simply pass every model. It tells apart a model whose only commitment error is class proportions from one that also commits late. \citet{handke2025measuring} measured the timing of class decisions in DDPM models on CIFAR-10 with an entropy-based method; our comparison adds a reference point from the data.
+
+\section{Related Work}
+
+\para{Commitment in diffusion models.}
+Speciation and critical windows have been analysed for mixtures and for data with nested classes \citep{biroli2023generative,biroli2024dynamical,raya2023spontaneous,li2024critical,sclocchi2025phase,achilli2026theory,marta2026speciation}. \citet{stancevic2026information} study the lopsided two-class case and entropy-based detectors. \citet{handke2025measuring,handke2026entropic} track class probabilities along the trajectories of trained models. \citet{sclocchi2025phase} use forward--backward experiments, which are close in spirit to our restarts. Our contributions are measurements: committors placed side by side with density transitions, a model-versus-data comparison that is exact in principle and whose power we measure, and a breakdown of a trained model's commitment errors into class proportions and, for a weaker model, timing.
+
+\para{Measuring sticks and committors.}
+That a landscape depends on the coordinate in which it is drawn is well known in molecular simulation \citep{hartmann2007comment}, where the committor is the standard coordinate-free alternative \citep{e2010transition}. Following the peaks of a distribution as it is smoothed goes back to \citet{silverman1981using} and \citet{minnotte1993mode}.
+
+\para{Class balance in generative models.}
+Counting the classes of generated images with a separate classifier goes back at least to \citet{santurkar2018classification}. Unconditional diffusion models trained on balanced data have been found to skew attributes such as gender and race \citep{perera2023analyzing,pal2023gaussian}. Rebalancing through guidance is established \citep{qin2023class,parihar2024balancing}. \citet{nicoletti2026interplay} analyse how class spread and imbalance shape what a network learns first. The classes our EDM run over-produces tend to be those with more pixel variance (correlation $0.5$ over ten classes), consistent with their analysis though not a test of it. Exposure bias \citep{ning2024elucidating} concerns mismatches between the noisy images a sampler visits and those seen in training.
+
+\section{Limitations}
+
+\begin{itemize}[leftmargin=*]
+\item \emph{Scope.} One dataset with ten classes, and two model families. Whether the same picture holds for larger datasets with deeper class hierarchies, such as ImageNet, is open.
+\item \emph{What the method can see.} Only commitment along the ``which class?'' direction, measured through a learned classifier. The lopsidedness measure is insensitive to distortions below about $0.5$ nats per class, whereas the timing measure is much more sensitive. Errors unrelated to class identity are invisible.
+\item \emph{Committors.} 320 trajectories, 12 restarts each, and noise levels spaced by a factor of $1.5$. Decision levels move by about one grid step with the definition of ``decided''. The small excess in committor fidelity is unexplained.
+\item \emph{Left-overs.} EDM's 11\% timing shift against mass-matched data has no mechanism we can identify, and after correction our intervals cannot tell whether it persists. Equation~\eqref{eq:shift} predicts timing errors about a third larger than measured, also unexplained.
+\item \emph{DDPM} is run through our translation layer rather than its native sampler.
+\item \emph{Correction.} We could not determine on CIFAR-10 at which noise levels the correction must act. The claim that class ordering is mostly simple image statistics rests on a Gaussian prediction, not on generating from a Gaussian model.
+\end{itemize}
+
+\section{Conclusion}
+
+So when does a diffusion model decide what to draw? On CIFAR-10, coarse decisions come first. An image settles whether it is a vehicle or an animal at about twice the noise level at which it settles which animal. And what does a strong model get wrong about these decisions? Remarkably little, along the class axis: it decides exactly as its data do, except that it draws some classes too often. Give the data the model's class proportions and the data reproduce the model. Give the model the data's proportions, through conditioning or a small, tuning-free correction to its sampler, and the model reproduces the data. A weaker model shows the same effect plus a delay in when it commits, which the same method picks up. The cheap way of measuring commitment puts decisions in the right order, but only the expensive way, restarting generation and counting outcomes, tells their time.
+
+\bibliographystyle{abbrvnat}
+\bibliography{refs}
+
+\input{appendix}
+
+\end{document}

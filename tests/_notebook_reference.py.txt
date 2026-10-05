@@ -1,0 +1,70 @@
+G = np.linspace(-4.0, 4.0, 4001); DGG = G[1]-G[0]
+def wkde_score(m, w):
+    m = np.clip(m, -8, 8); w = np.asarray(w, dtype=np.float64); neff = w.sum()**2/np.maximum((w**2).sum(), 1e-12)
+    mu = np.average(m, weights=w); sd = np.sqrt(np.average((m-mu)**2, weights=w)); bw = max(1.5*1.06*sd*neff**(-1/5), 1e-3)
+    h, _ = np.histogram(m, bins=np.append(G-DGG/2, G[-1]+DGG/2), weights=w, density=True); k = np.exp(-G**2/(2*bw**2)); k /= k.sum()
+    p = np.maximum(fftconvolve(h, k, 'same'), 1e-300); return np.gradient(np.log(p), G), p
+def _merge(pts, merge=0.03):
+    ch = True
+    while ch and len(pts) > 1:
+        ch = False
+        for a in range(len(pts)-1):
+            if abs(pts[a][0]-pts[a+1][0]) < merge and pts[a][1] != pts[a+1][1]: del pts[a:a+2]; ch = True; break
+    return pts
+def stationary(sm, p, lo=-3.5, hi=3.5, prominence=0.05):
+    keep = (G > lo) & (G < hi) & (p > 1e-3*p.max()); idx = np.where((np.sign(sm[:-1]) != np.sign(sm[1:])) & keep[:-1] & keep[1:])[0]
+    pts = _merge([(float(G[i]-sm[i]*DGG/(sm[i+1]-sm[i])) if sm[i+1] != sm[i] else float(G[i]), 'max' if sm[i] > 0 else 'min') for i in idx])
+    logp = np.concatenate([[0.0], np.cumsum(0.5*(sm[1:]+sm[:-1])*DGG)]); lp = lambda x: float(np.interp(x, G, logp)); ch = True
+    while ch and len(pts) > 1:
+        ch = False
+        for a in range(len(pts)-1):
+            if pts[a][1] != pts[a+1][1] and abs(lp(pts[a][0]) - lp(pts[a+1][0])) < prominence: del pts[a:a+2]; ch = True; break
+    return pts
+def n_max(pts): return sum(k == 'max' for _, k in pts)
+def cusp(sm, p, window=1.0, b_min=0.02, s_max=0.6):
+    ok = (np.abs(G) < window) & (p > 0); c3, c2, c1, c0 = np.polyfit(G[ok], sm[ok], 3, w=np.sqrt(p[ok])); b = max(-c3, b_min); c3 = -b; s = float(np.clip(-c2/(3*c3), -s_max, s_max))
+    return c0 + c1*s + c2*s**2 + c3*s**3, c1 + 3*c3*s**2 + 2*c2*s, b
+def std_stats(z, wa, wb):
+    mua, mub = np.average(z, weights=wa), np.average(z, weights=wb); half = 0.5*(mua-mub); sda = np.sqrt(np.average((z-mua)**2, weights=wa)); sdb = np.sqrt(np.average((z-mub)**2, weights=wb))
+    return 0.5*(mua+mub), half, abs(half)/(0.5*(sda+sdb))
+STD = {(a, b): [std_stats(L_TE[g, :, a].astype(np.float64) - L_TE[g, :, b], W_TE[:, a] + 1e-12, W_TE[:, b] + 1e-12) for g in range(len(SIG))] for a, b in PAIRS}
+def analyse(L, W, a, b, idx, balance=False, rw=None, g0=0, slope=False):
+    """Along the pair log-odds (reference standardisation): returns dict(sigma, gi, h, a, b[, s]). rw: extra class reweighting factors (for part C)."""
+    Wa = W[idx, a].astype(np.float64); Wb = W[idx, b].astype(np.float64)
+    if rw is not None: Wa = Wa*rw[a]; Wb = Wb*rw[b]
+    if balance: tot = 0.5*(Wa.sum()+Wb.sum()); Wa = Wa/Wa.sum()*tot; Wb = Wb/Wb.sum()*tot
+    def dist(g):
+        mid, half, sep = STD[(a, b)][g]
+        if sep < 0.3: return None
+        z = L[g, idx, a].astype(np.float64) - L[g, idx, b]; return wkde_score((z - mid)/half, Wa + Wb)
+    prev = None if g0 == 0 else 1
+    for g in range(g0, len(SIG)):
+        d = dist(g); nm = 1 if d is None else n_max(stationary(*d))
+        if nm >= 2 and prev is not None:
+            h, a_, b_ = cusp(*d); out = dict(sigma=float(SIG[g]), gi=g, h=h, a=a_, b=b_)
+            if slope:                                            # a(log sigma) near the transition, from the levels just above and below
+                gs = [k for k in range(max(0, g-4), min(len(SIG), g+3)) if dist(k) is not None]
+                av = [cusp(*dist(k))[1] for k in gs]
+                if len(gs) >= 3: out['s'] = -np.polyfit(np.log(SIG[gs]), av, 1)[0]
+            return out
+        if nm == 1: prev = 1
+    return None
+def boot(L, W, a, b, n, B, balance=False, ref=False, g_hint=None):
+    """Bootstrap medians and 95% intervals of sigma_bif and h at sample size n."""
+    ss, hs = [], []; g0 = 0 if g_hint is None else max(0, g_hint - 8)
+    for _ in range(B):
+        idx = rng.choice(len(W), size=n, replace=True); r = analyse(L, W, a, b, idx, balance, g0=g0)
+        if r: ss.append(r['sigma']); hs.append(r['h'])
+    if len(ss) < B//3: return None
+    return dict(sigma=np.median(ss), s_lo=np.percentile(ss, 2.5), s_hi=np.percentile(ss, 97.5), h=np.median(hs), h_lo=np.percentile(hs, 2.5), h_hi=np.percentile(hs, 97.5), n_ok=len(ss))
+def class_block_ci(x, y, pairs, B=5000, fn=None):
+    """Class-block bootstrap: resample the 10 classes with replacement, weight each pair by the product of its classes' multiplicities."""
+    P = np.array(pairs); out = []
+    for _ in range(B):
+        cls = rng.choice(10, 10, replace=True); w = np.array([np.sum(cls == a)*np.sum(cls == b) for a, b in P], float)
+        if w.sum() < 6: continue
+        if fn is None:
+            mx, my = np.average(x, weights=w), np.average(y, weights=w); out.append(np.sum(w*(x-mx)*(y-my))/np.sqrt(np.sum(w*(x-mx)**2)*np.sum(w*(y-my)**2)))
+        else: out.append(fn(w))
+    out = np.array(out, float); out = out[np.isfinite(out)]
+    return np.percentile(out, [2.5, 97.5]) if len(out) > 20 else np.array([np.nan, np.nan])

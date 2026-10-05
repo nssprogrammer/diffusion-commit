@@ -1,0 +1,526 @@
+\clearpage
+\appendix
+
+\section{Theory}
+\label{app:theory}
+
+Throughout, $x_\sigma=x_0+\sigma\varepsilon$ with $\varepsilon\sim\mathcal N(0,I_d)$, and $p_\sigma$ is the density of $x_\sigma$. For $\sigma>0$ it is smooth and strictly positive, which justifies the integrations by parts below for smooth test functions $g$ with bounded derivatives.
+
+\subsection{The mean-force identity}
+\label{app:identity}
+
+For a linear order parameter $m(x)=u\cdot(x-c)/\ell$ with $\|u\|=1$,
+\begin{equation}
+\frac{\mathrm d}{\mathrm dm}\log p_\sigma(m)=\E\big[\,\ell\,u\cdot\nabla\log p_\sigma(x_\sigma)\;\big|\;m(x_\sigma)=m\,\big].
+\label{eq:mf}
+\end{equation}
+\emph{Proof.} Since $\nabla_x g(m(x))=g'(m(x))\,u/\ell$, we have $g'(m(x))=\ell\,u\cdot\nabla_x g(m(x))$. Integrating by parts, $\E[g'(m)]=-\E[g(m)\,\ell\,u\cdot\nabla\log p_\sigma(x)]$. In one dimension, $\E[g'(m)]=-\E[g(m)(\log p_\sigma)'(m)]$. Equating the two for every $g$ gives~\eqref{eq:mf}. $\square$
+
+This is the potential-of-mean-force identity along a linear collective variable \citep{kirkwood1935statistical}. For a smooth nonlinear $\phi$ with $\nabla\phi\neq0$, the same argument with $F=\nabla\phi/|\nabla\phi|^2$ gives $\frac{\mathrm d}{\mathrm dm}\log p_\sigma(m)=\E[F\cdot\nabla\log p_\sigma+\nabla\cdot F\mid\phi=m]$ \citep{carter1989constrained}. Along a classifier-defined coordinate the divergence term makes the estimator very noisy. At the largest budget we could afford, two independent halves of the data disagreed with each other as much as with the reference, which is why the main text uses Proposition~\ref{prop:joint} instead.
+
+\subsection{Why modes are not fixed points for nonlinear coordinates}
+\label{app:modes}
+
+Under the reverse dynamics, a nonlinear $\phi$ evolves with a drift and a diffusion coefficient. The Markovian projection onto $m$ has an effective diffusion $D(m)\propto\E[|\nabla\phi|^2\mid\phi=m]$ \citep{gyongy1986mimicking}. For a one-dimensional diffusion with drift $\mu(m)$ and diffusion $D(m)$, the stationary density satisfies $\mu=D\,(\log p)'+D'$. Zeros of the drift therefore coincide with modes of $p$ only when $D$ is constant, which holds for linear coordinates. For classifier coordinates, $|\nabla\phi|$ varies strongly with $m$, so we interpret the natural-image results as statements about the modes of a density, not about attractors.
+
+\subsection{Proof of Proposition~\ref{prop:joint}, and the committor}
+\label{app:joint}
+
+Write the forward process as $x_s=x_0+W_{s^2}$ with $W$ a standard Brownian motion, so that $x_s$ has density $p_s$ and independent increments. Assume the score is exact and that the reverse SDE is started from $p_{\sigma_{\max}}$. By the time-reversal theorem \citep{anderson1982reverse,haussmann1986time}, the reverse-time SDE $\mathrm dx=-2s\nabla\log p_s(x)\,\mathrm ds+\sqrt{2s}\,\mathrm d\bar W_s$, integrated from $\sigma_{\max}$ down to $0$, has the same law on paths as the forward process read backwards. Hence for $\sigma>\sigma_{\min}$ the pair $(x_\sigma,x_{\sigma_{\min}})$ has the same joint law under both. On the forward side this joint law is realised by $x_{\sigma_{\min}}=x_0+\sigma_{\min}\varepsilon_1$ followed by $x_\sigma=x_{\sigma_{\min}}+\sqrt{\sigma^2-\sigma_{\min}^2}\,\varepsilon_2$. The quantity $\E[g(\phi(x_\sigma))\,w(x_{\sigma_{\min}})]$ is a functional of this joint law, so it takes the same value on both sides for every bounded $g$. Normalising by $\E[w(x_{\sigma_{\min}})]$ proves the proposition. $\square$
+
+Two remarks. In practice the sampler starts from $\mathcal N(0,\sigma_{\max}^2I)$ rather than $p_{\sigma_{\max}}$; at $\sigma_{\max}=80$ on the $[-1,1]$ pixel scale the difference is negligible. The probability-flow ODE shares only one-time marginals. It is a deterministic map $x_\sigma\mapsto T(x_\sigma)$, so its joint law sits on the graph of $T$, while the forward joint law has a non-degenerate conditional distribution.
+
+\emph{The committor.} Taking $\sigma_{\min}\to0$ and $w$ the indicator of class $a$, the same argument shows that the probability that a reverse-SDE trajectory through $x$ at noise level $\sigma$ ends in class $a$ equals $P(a\mid x_\sigma=x)$. The class posterior is therefore the committor of the generative process, and the Bayes log-odds is its logit.
+
+\subsection{The cusp normal form: fold condition and jump}
+\label{app:cusp}
+
+The zeros of $f(m)=h+am-bm^3$ solve $m^3+pm+q=0$ with $p=-a/b$ and $q=-h/b$. There are three real roots exactly when $-(4p^3+27q^2)>0$, that is, $4a^3>27\,b\,h^2$. The condition is invariant under $f\mapsto\lambda f$. At equality there is a double root at $m_\ast=-\mathrm{sgn}(h)(|h|/2b)^{1/3}$, the newborn mode and its valley. Because the three roots sum to zero, the persisting mode sits at $-2m_\ast$, a distance $3(|h|/2b)^{1/3}$ away. For $h>0$ the persisting root is positive, so the class at $+1$ persists.
+
+\subsection{How class mass enters $h$ and $\sbif$}
+\label{app:tanh}
+
+\emph{The asymmetry.} Along an exact log-likelihood ratio $z$, $p(z\mid a)=e^{z}p(z\mid b)$, so the pair density is $p(z\mid b)(w_b+w_ae^{z})$ and its log-slope is $(\log p(z\mid b))'+\mathrm{sigmoid}(z+\log(w_a/w_b))$. A change of weights changes only the sigmoid term, by $\frac14\Delta\log(w_a/w_b)$ at $z=0$. In the two-Gaussian model with classes at $\pm1$ and noise variance $\tau$, $z=2m/\tau$, so in units of $m$ the shift is $\Delta\log(w_a/w_b)/(2\tau)\approx\frac12\Delta\log(w_a/w_b)$ near the transition, where $\tau\approx1$. Equivalently, $h\approx\tanh\eta$ with $\eta=\frac12\log(w_a/w_b)$, so $|h|$ can be read as the asymmetry of a class split $e^{2\eta}:1$. The relation is a property of the coordinate. It holds for any pair of class-conditional densities, which is why we use it as a pipeline check and not as a finding.
+
+\emph{The location.} By the fold condition $4a^3=27bh^2$, the fold happens at $a_f(h)=3(b h^2/4)^{1/3}$. If near the transition $a\approx a_c+s(\log\sigma_c-\log\sigma)$ with $s>0$, then $\log\sbif=\log\sigma_c-a_f(h)/s$. For two distributions with the same $b$, $s$ and $\sigma_c$ but different asymmetries, this gives $\Delta\log\sbif=-3(b/4)^{1/3}\Delta|h|^{2/3}/s$, which is Equation~\eqref{eq:shift}. We estimate $b$ from the cubic fit at the data's transition, and $s$ by regressing the fitted $a$ on $\log\sigma$ over the levels just above and below it.
+
+\subsection{Why partial class tilts are weak}
+\label{app:partial}
+
+Let the tilt of Equation~\eqref{eq:tilt} be applied only for $\sigma\ge\sigma_1$. With an exact score and classifier, the marginal at $\sigma_1$ is the tilted one, $p'_{\sigma_1}(x)\propto p_{\sigma_1}(x)\sum_c r_cP_{\sigma_1}(c\mid x)$. Below $\sigma_1$ the untilted dynamics carry each state to class $c$ with probability $P_{\sigma_1}(c\mid x)$. The final frequency of class $c$ is therefore $\E_{p'_{\sigma_1}}[P_{\sigma_1}(c\mid x)]$, which differs from the untilted frequency only through the covariance, under $p_{\sigma_1}$, between $P_{\sigma_1}(c\mid x)$ and the tilt weight $\sum_{c'}r_{c'}P_{\sigma_1}(c'\mid x)$. While posteriors are diffuse that covariance is small, so a high-noise-only tilt corrects little. Conversely, if the tilt acts only for $\sigma<\sigma_1$, samples arrive at $\sigma_1$ from $p_{\sigma_1}$. The tilt then reweights each state's future by $r_c$ in proportion to $P_{\sigma_1}(c\mid x)$, which can only redistribute probability among the classes a state has not yet excluded. Each partial tilt therefore achieves only part of the correction, and the full correction needs both.
+
+\section{Validation on Exactly Solvable Mixtures}
+\label{app:controls}
+
+\para{Two Gaussians, linear coordinate.}
+For means $\pm s$ with $s\in\{\pm1\}^d$ and weights $w,1-w$, the stationary points of the marginal of $m=s\cdot x/d$ solve $m=\tanh(m/\tau+\eta)$ with $\tau=\sigma^2/d$. With the analytic score in $d=256$, the estimator of Equation~\eqref{eq:mf} recovers these points to within $\pm0.005$ at every noise level, including the fold. For $w=0.8$ the fold is at $\tau=0.450$, and the new mode is born at $m=-0.741$.
+
+\para{Three Gaussians, the reverse-SDE test.}
+Proposition~\ref{prop:joint} can only be tested with at least three classes. With two, the pair weights sum to one, the weighted marginal is the plain marginal, and the ODE preserves that too. We used $d=256$ and three classes with sign-pattern means, an isotropic component, and class-specific spreads along each class direction. The order parameter is the exact log-odds of two of the classes, and the terminal weights are the exact posteriors at $\sigma_{\min}=0.05$. With 20{,}000 trajectories and a reference subsample of the same size, ten resamples give a transition ratio of $1.000$ $[0.939,1.065]$ for the reverse SDE at 256 and at 512 steps, and $1.361$ $[1.202,1.536]$ for a 64-step Heun ODE.
+
+\para{Recalibration on known warps.}
+We applied the monotone recalibration of Section~\ref{sec:density} to known distortions of an exact log-ratio (Table~\ref{tab:calval}). It recovers affine, $\tanh$ and square-root warps closely, and a strongly convex cubic warp only partly. The ``map nonlinearity'' it reports for a purely affine warp, $0.074$, is the noise floor of that diagnostic at this sample size.
+
+\begin{table}[h]
+\centering
+\caption{Recalibration of known warps $u=g(z^\ast)$ of an exact log-ratio ($8{,}000$ samples, cross-fitted).}
+\label{tab:calval}
+\small
+\begin{tabular}{lcccc}
+\toprule
+warp & tilting slope, raw & tilting slope, recalibrated & correlation with $z^\ast$ & relative error \\
+\midrule
+affine & 1.42 & 0.98 & 0.999 & 0.054 \\
+$3\tanh(z/3)$ & 1.34 & 0.99 & 0.997 & 0.079 \\
+signed $\sqrt{|z|}$ & 1.65 & 0.99 & 0.998 & 0.060 \\
+$z+0.08z^3$ & 0.49 & 0.78 & 0.959 & 0.485 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{An Exactly Solvable Test Bed}
+\label{app:testbed}
+
+\para{Setup.}
+Six Gaussian classes in $d=32$ with means $\mu_c$ and isotropic variances $s_c^2\in\{0.30,0.45,0.60,0.35,0.50,0.65\}^2$. Classes 0--2 and 3--5 form two superclasses separated by $\pm3$ along the first axis. Within a superclass the classes sit at the vertices of a triangle of radius $1.6$ in the next two axes, and each class has a small private offset of $0.6$ along its own axis. Under noise, $p_\sigma(x\mid c)=\mathcal N(\mu_c,(s_c^2+\sigma^2)I)$, so the score, the posterior and the committor are all closed-form. The ``data'' have uniform class weights. The ``model'' has the same shapes with weights $(0.22,0.12,0.16,0.20,0.10,0.20)$, a pure mass error of $0.238$ in mean $|\log f/f^d|$. We sample with Euler--Maruyama on a 256-step EDM schedule from $\sigma=40$ to $0.02$.
+
+\para{Tilts.}
+A full-trajectory tilt towards uniform reduces the class-mass error from $0.238$ to $0.047$ with the model's own posterior (exact), to $0.045$ with the data posterior and $r=f^t/f^m$ (first order), and to $0.047$ with the data posterior shifted by $\log(f^m/f^d)$, which is identical to the exact form here. At this size of mass error the first-order tilt is as good as the exact one. The residual $0.045$ reflects time discretisation and finite samples. Table~\ref{tab:bands} in the main text gives the band-limited shares.
+
+\para{Committor estimators.}
+From 400 model trajectories stopped at 12 levels between 8 and $0.1$, we ran 12 continuations per state. For each of the 15 pairs we computed:
+\begin{itemize}[leftmargin=*]
+\item the eligibility estimator, a per-state rule that admits a state only if at least 6 of its 12 continuations land in the pair;
+\item the pooled cross-over estimator, with threshold $0.1$;
+\item the pooled estimator's infinite-sample value, using exact committors;
+\item a per-state definition computed with exact committors: the highest level from which at least half of the trajectories have pairwise committor $\ge0.9$.
+\end{itemize}
+The pooled estimator equals its exact target for all 15 pairs (median log-ratio $0.000$). That target sits about one grid step below the per-state definition (median log-ratio $-0.39$, a factor of $0.68$). The eligibility estimator matches the per-state definition at the median, but reads one grid step too high for 5 of the 15 pairs. In this system no within-superclass pair is decided, by the per-state definition, before the population's superclass decision ($2.43$). On CIFAR-10, by contrast, the threshold-$0.05$ decisions for vehicle pairs ($1.61$) sit below the superclass median ($2.4$), and those at threshold $0.1$ ($2.60$) above it, which is permitted, since a pair can be resolved while other classes remain open.
+
+\section{Coordinate Studies}
+\label{app:coord}
+
+\para{Classifiers.}
+The main classifier is a ResNet with a 64-channel input convolution and five residual blocks of 64, 128, 128, 256 and 256 channels (two with stride 2), BatchNorm and SiLU. The noise level enters through a sinusoidal embedding of $\frac14\log\sigma$, an MLP, and FiLM scale-and-shift in every block. It is trained on the 50{,}000 CIFAR-10 training images with horizontal flips, $\sigma$ log-uniform on $[0.05,10]$, AdamW (learning rate $2\times10^{-3}$ with a one-cycle schedule, weight decay $5\times10^{-4}$), batch 256, for 25 epochs. Its test accuracy is $85.2\%$, $81.8\%$, $76.0\%$, $64.2\%$, $48.6\%$ and $34.4\%$ at $\sigma=0.05$, $0.25$, $0.5$, $1$, $2$ and $4$. The second architecture is a plain VGG stack without residual connections, with GroupNorm and GELU. It conditions on noise by rescaling the input by $1/\sqrt{1+\sigma^2}$ and appending $\frac14\log\sigma$ as a constant input channel, and its test accuracy is $81.6\%$, $72.9\%$ and $62.5\%$ at $\sigma=0.05$, $0.5$ and $1$. The null classifier has the main architecture with 30 outputs: the ten classes, their vertical flips and their red–blue swaps.
+
+\para{Non-canonical warps.}
+Relative to the raw log-odds, re-running the census along $\tanh(z/2)$ moves the transitions by a median factor of $4.5$ and gives $h$ correlated at only $0.67$. A signed square root moves them by a factor of $9.1$, with $h$ correlated at $0.42$. These are the distortions the canonical coordinate is meant to avoid.
+
+\para{Recalibration on real pairs.}
+At each pair's transition, the raw log-odds has a tilting slope with median $0.85$ (IQR $0.72$--$0.91$), and the recalibrated coordinate $0.92$ ($0.89$--$0.95$), with median absolute intercept $0.07$. Agreement between the coordinates is summarised below.
+
+\begin{table}[h]
+\centering
+\caption{Agreement between coordinates over the 44 pairs (correlation, sign agreement of $h$, and median ratio of $\sbif$).}
+\small
+\begin{tabular}{lccccc}
+\toprule
+comparison & corr.\ $h$ & sign agr. & median $|\Delta h|$ & corr.\ $\log\sbif$ & median ratio \\
+\midrule
+ResNet: raw vs.\ recal. & 0.822 & 0.70 & 0.058 & 0.968 & 1.00 \\
+VGG: raw vs.\ recal. & 0.834 & 0.77 & 0.056 & 0.946 & 0.90 \\
+raw: ResNet vs.\ VGG & 0.938 & 0.86 & 0.027 & 0.958 & 1.11 \\
+recal.: ResNet vs.\ VGG & 0.903 & 0.93 & 0.039 & 0.944 & 1.00 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\para{The symmetric null.}
+Of the twenty exactly symmetric pairs (ten classes, two transformations), thirteen produce a transition; the others never develop two modes. Their $|h|$ has median $0.013$ and maximum $0.047$ through the raw coordinate, median $0.005$ and maximum $0.024$ with the antisymmetrised coordinate, and median $0.063$ and maximum $0.151$ along the recalibrated coordinate. Through the same 30-class classifier, the real pairs have median $|h|=0.072$, and 27 of 44 exceed the null's maximum.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.66\textwidth]{figs/fig3_null.pdf}
+\caption{The noise floor for lopsidedness. Filled bars: $|h|$ of the 44 real class pairs (census classifier). Orange outline: 13 pairs that are exactly symmetric by construction (a class and its vertical flip or colour-swapped copy), measured through a classifier trained on them. Green dashed outline: the same symmetric pairs with the measuring stick made exactly antisymmetric, which leaves only estimation noise. The dotted line is the largest symmetric-pair value, $0.047$, used as the noise floor.}
+\label{fig:null}
+\end{figure}
+
+\para{The Gaussian baseline.}
+For each pair we took the pixel-space means $\mu_a,\mu_b$ and the pooled covariance $\Sigma$ of the training images, and computed the discriminant separation $d'(\sigma)^2=\sum_k(e_k^\top\Delta\mu)^2/(\lambda_k+\sigma^2)$ over the eigenpairs of $\Sigma$. We then solved for the noise level $\sigma_G$ at which $d'=2$, the separation at which an equal mixture of two equal-variance Gaussians stops being bimodal. $\log\sigma_G$ correlates with $\log\sbif$ at $0.89$ (raw) and $0.82$ (recalibrated). The transitions sit at a roughly constant multiple of $\sigma_G$ (median $6.6$), because the classifier sees far more than second-order structure. After regressing out the trend, the category residuals are $+0.02$ (vehicle/animal), $+0.04$ (vehicle/vehicle) and $-0.23$ (animal/animal) in $\log\sbif$.
+
+\section{Linear Directions on CIFAR-10}
+\label{app:linear}
+
+For an unconditional model, the data density along a direction is that of the whole training set. We therefore tested the eleven directions along which the full distribution could plausibly form two lumps: each class against the rest, and vehicles against animals. Their Fisher separabilities are $0.92$--$1.68$. The projections are single humps with shoulders, and the only mode births found were at $\tau=0.01$--$0.07$, where shoulders are smoothed away. For the pretrained model's softest directions we power-iterated the batch-averaged Jacobian of its denoiser at $\sigma\in\{1,2,4,8,16\}$. The top eigenvalue is $0.94$, $0.91$, $0.88$, $0.75$ and $0.48$. The data are unimodal along these directions at every $\sigma$, and the classes they separate best, airplane, frog and ship, share uniform backgrounds.
+
+\section{Statistics}
+\label{app:stats}
+
+\para{Class-level tests.}
+Each class appears in nine pairs, so pair-level statistics are not independent. For the hierarchy we computed the ratio of median transitions for all $\binom{10}{4}=210$ ways of choosing four ``vehicle'' classes. For the tighter-class tendency we permuted class variances among classes 10{,}000 times. Leaving out one class at a time moves the raw correlation between $-0.39$ and $-0.73$, so no single class drives it. It is not significant at the class level after recalibration ($p=0.08$ for the correlation, $p=0.30$ for the count).
+
+\para{Resampling counts.}
+Per-pair point estimates are medians of bootstrap resamples: 100 per pair for the main comparisons (Section~\ref{sec:edm} and Table~\ref{tab:models}), 60 for the planted-error experiments, and 30 for the corruption experiments of Table~\ref{tab:power}. Intervals for quantities pooled over pairs use 1{,}000 class-block resamples. The per-pair census intervals of Table~\ref{tab:census_full} use 1{,}000 resamples, and the pretrained per-pair table uses 100 paired resamples, so its intervals are coarse.
+
+\para{The noise floor of the class-mass error.}
+With uniform classes, multinomial noise alone gives a mean $|\log\hat f/0.1|$ of $0.076$, $0.063$, $0.054$, $0.048$, $0.044$, $0.040$ and $0.024$ at $n=1{,}000$, $1{,}500$, $2{,}000$, $2{,}500$, $3{,}000$, $3{,}500$ and $10{,}000$ (2{,}000 simulations each).
+
+\para{Reliability and multiplicity.}
+Reliabilities are split-half correlations, stepped up to the full sample with the Spearman--Brown formula $2r/(1+r)$. The ceiling for a correlation between two measured quantities is the geometric mean of their reliabilities. Pair-level tests of $|h|$ against the through-classifier floor use 500 bootstrap resamples, and we control the false discovery rate at 5\% with the Benjamini--Hochberg procedure (22 pairs uncorrected, 19 controlled). Correlations that pool pairs, and ratios averaged over pairs, use a class-block bootstrap that resamples the ten classes with replacement and weights each pair by the product of its classes' multiplicities.
+
+\para{Sensitivity.}
+\begin{table}[h]
+\centering
+\caption{Sensitivity of the census to the density estimator (raw coordinate, 44 pairs), relative to the default: bandwidth $1.5\times$ Silverman, merge distance $0.03$, prominence $0.05$ nats, no persistence requirement.}
+\small
+\begin{tabular}{lcccc}
+\toprule
+variant & corr.\ $h$ & median $|\Delta h|$ & corr.\ $\log\sbif$ & median $\sbif$ ratio \\
+\midrule
+bandwidth $0.75\times$ & 0.964 & 0.030 & 0.978 & 1.22 \\
+bandwidth $1.0\times$ & 0.984 & 0.020 & 0.989 & 1.22 \\
+bandwidth $2.0\times$ & 0.983 & 0.016 & 0.983 & 0.82 \\
+merge $0.06$, prominence $0.10$ & 0.994 & 0.010 & 0.993 & 0.90 \\
+persistence over 2 levels & 1.000 & 0.000 & 1.000 & 1.00 \\
+persistence over 3 levels & 1.000 & 0.000 & 1.000 & 1.00 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Committors: Protocol and Checks}
+\label{app:committor}
+
+\para{Protocol.}
+We generated 320 trajectories with the same reverse SDE as in the main experiments and stored their states at the 12 schedule steps closest to a logarithmic grid between $\sigma=7.9$ and $0.10$ (the levels of Table~\ref{tab:fidelity}). From each stored state we ran 12 continuations with independent noise to $\sigma_{\min}=0.05$, denoised the end point, and labelled it with the ViT. The trajectories' own final labels give the class frequencies; deer is the rarest at $4.4\%$. At each stored state we also recorded our noise-conditional classifier's posterior.
+
+\para{A biased estimator, and its fix.}
+Our first estimator of pairwise decisions considered a state only if at least six of its twelve continuations landed in the pair. At high noise that rule keeps only states that are already heading towards the pair, so it overstates commitment there. It gave median pair decisions of $3.7$--$5.4$, including animal pairs supposedly decided above the noise level at which animal-versus-vehicle is settled ($2.4$), which is impossible. The pooled cross-over rate of Section~\ref{sec:branching} weights each trajectory by how many of its continuations land in the pair, with no threshold. It gives $3.15$, $2.60$ and $1.52$ for the three categories, all below the corresponding coarser decision. Intervals come from 200 bootstrap resamples of trajectories.
+
+\para{Committor fidelity.}
+Table~\ref{tab:fidelity} lists, at each level, the total-variation distance between the model's committor and the classifier posterior; the part expected from 12-draw multinomial noise; and the excess above the low-noise plateau, which reflects the classifier's own errors. Excesses below zero at high noise reflect the classifier's diffuse posteriors there, which shows that the floor is not constant.
+
+\begin{table}[h]
+\centering
+\caption{Committor fidelity of the pretrained unconditional model (320 trajectories, 12 continuations per state). ``Above floor'' subtracts the mean excess at the two lowest noise levels ($0.088$); the interval is from 100 bootstrap resamples of trajectories. ``Slope'' regresses the measured committor on the classifier posterior over all states and classes.}
+\label{tab:fidelity}
+\small
+\begin{tabular}{ccccc}
+\toprule
+$\sigma$ & total variation & excess over 12-draw noise & above floor [95\% CI] & slope \\
+\midrule
+7.95 & 0.354 & 0.029 & $-0.059$ [$-0.086$, $-0.037$] & 1.03 \\
+5.42 & 0.344 & 0.034 & $-0.054$ [$-0.080$, $-0.027$] & 1.09 \\
+3.61 & 0.361 & 0.086 & $-0.002$ [$-0.040$, $+0.015$] & 1.11 \\
+2.42 & 0.359 & 0.118 & $+0.029$ [$-0.005$, $+0.049$] & 1.09 \\
+1.63 & 0.325 & 0.125 & $+0.037$ [$+0.015$, $+0.062$] & 1.07 \\
+1.11 & 0.303 & 0.147 & $+0.058$ [$+0.034$, $+0.089$] & 1.00 \\
+0.74 & 0.261 & 0.142 & $+0.054$ [$+0.024$, $+0.083$] & 0.98 \\
+0.50 & 0.211 & 0.127 & $+0.038$ [$+0.011$, $+0.061$] & 0.96 \\
+0.33 & 0.174 & 0.108 & $+0.019$ [$+0.002$, $+0.039$] & 0.96 \\
+0.22 & 0.143 & 0.087 & $-0.001$ [$-0.012$, $+0.015$] & 0.97 \\
+0.15 & 0.132 & 0.087 & $-0.001$ [$-0.008$, $+0.002$] & 0.97 \\
+0.10 & 0.134 & 0.089 & $+0.001$ [$-0.002$, $+0.008$] & 0.96 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\para{Is the excess mass?}
+Shifting the classifier posterior by the model's class frequencies, $P_m(c\mid x)\propto P_d(c\mid x)f^m_c/f^d_c$, and recomputing the raw excess changes it by between $-0.007$ and $+0.008$ at the twelve levels. All 95\% intervals of the difference span zero (300 bootstrap resamples of trajectories). The floor cancels in this difference.
+
+\section{The Pretrained Model: Details and Checks}
+\label{app:pretrained}
+
+We use the checkpoint \texttt{edm-cifar10-32x32-uncond-vp} \citep{karras2022elucidating} in half precision; its relative deviation from single precision on a test batch is $1.4\times10^{-3}$. The reverse SDE is discretised with Euler--Maruyama, 256 steps on the EDM schedule ($\rho=7$) from $\sigma=80$ to $0.05$, and logits are recorded at 68 levels between $0.086$ and $7.95$. The reference is the 10{,}000 test images with four noise draws each, noised first to $\sigma_{\min}$ (for the terminal weights) and then onward. The standardisation of the log-odds is computed from the reference at each level and applied to both sides. The standard sampler is EDM's deterministic Heun method with 18 steps (35 evaluations) from $\sigma=80$ to $0.002$, in full precision. FID uses Inception features \citep{heusel2017gans} against the 50{,}000 training images. The independent classifier is a ViT-Base fine-tuned on CIFAR-10 at $224\times224$ resolution \citep{dosovitskiy2021image}, with 98.4\% accuracy on 2{,}000 test images.
+
+Class frequencies (our classifier / ViT), relative to the test set, which both classifiers read as uniform to within $0.003$:
+
+\begin{table}[h]
+\centering
+\small
+\caption{Generated class frequencies under two samplers (sample size; labelling classifier).}
+\footnotesize\setlength{\tabcolsep}{3pt}
+\begin{tabular}{lcccccccccc}
+\toprule
+ & airpl. & autom. & bird & cat & deer & dog & frog & horse & ship & truck \\
+\midrule
+SDE, fp16 (14.5k; ours) & 0.100 & 0.128 & 0.067 & 0.081 & 0.075 & 0.094 & 0.108 & 0.129 & 0.094 & 0.125 \\
+SDE, fp16 (3.5k; ours) & 0.101 & 0.133 & 0.076 & 0.082 & 0.082 & 0.104 & 0.104 & 0.111 & 0.094 & 0.114 \\
+SDE, fp16 (3.5k; ViT) & 0.099 & 0.130 & 0.082 & 0.089 & 0.079 & 0.095 & 0.100 & 0.113 & 0.093 & 0.119 \\
+Heun, fp32 (10k; ours) & 0.112 & 0.111 & 0.082 & 0.096 & 0.086 & 0.094 & 0.102 & 0.115 & 0.106 & 0.095 \\
+Heun, fp32 (10k; ViT) & 0.110 & 0.109 & 0.086 & 0.103 & 0.085 & 0.083 & 0.104 & 0.115 & 0.107 & 0.096 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+For the interventions, the imposed tilt (bird $\times2$, automobile $\times\frac12$) moved bird from $0.075$ to $0.096$ and automobile from $0.133$ to $0.104$. That is less than the tilt would achieve with a perfect classifier. The law of Section~\ref{sec:edm} is tested against the frequencies actually measured on the generated images. The degraded run, with the score scaled by $0.85$ at every noise level, produced FID $127.7$ and grossly distorted frequencies (deer $2\%$, truck $20\%$), and no pair developed a transition.
+
+\para{Samplers.}
+Class frequencies by the ViT for the same checkpoint (test set read as 0.100, 0.101, 0.100, 0.102, 0.101, 0.096, 0.100, 0.099, 0.100, 0.099). Euler--Maruyama in full precision: 256 steps (0.101, 0.131, 0.070, 0.091, 0.071, 0.089, 0.096, 0.133, 0.099, 0.119); 512 steps (0.102, 0.126, 0.087, 0.096, 0.085, 0.087, 0.099, 0.127, 0.080, 0.111); 1{,}024 steps (0.093, 0.136, 0.083, 0.101, 0.072, 0.088, 0.096, 0.134, 0.098, 0.099). Against data mass-matched to it, the 256-step full-precision run gives asymmetry agreement $0.964$ ($[0.84,1.00]$) and a location ratio of $1.09$ ($[0.88,1.43]$), the same picture as the half-precision runs. FID at these small sample sizes ($17.2$, $22.5$, $32.7$ at $n=2{,}000$, $1{,}500$, $1{,}000$) is dominated by its small-sample bias and cannot be compared across rows.
+
+\para{The corrected tilt.}
+Round 1 uses Equation~\eqref{eq:tilt} with $f^t=f^d$ and $f^m$ from the 14{,}500-trajectory run. Round 2 keeps $f^m$ but sets the target to $f^t_{\rm eff}\propto f^{d}\cdot f^{d}/f^{(1)}$, where $f^{(1)}$ are the frequencies achieved by round 1. ViT frequencies after round 2: (0.090, 0.102, 0.095, 0.106, 0.088, 0.096, 0.112, 0.118, 0.092, 0.102).
+
+\para{DDPM.}
+\texttt{google/ddpm-cifar10-32} with the linear $\beta$ schedule ($10^{-4}$ to $0.02$, 1{,}000 steps), so $\sigma_t$ ranges from $0.010$ to $157$. At each sampler noise level $\sigma$ we use the training timestep $t$ minimising $|\log\sigma_t-\log\sigma|$, evaluate $\varepsilon_\theta(x\sqrt{\bar\alpha_t},t)$ in half precision, and return $D=x-\sigma_t\varepsilon_\theta$. Over our 256-step schedule, the relative mismatch $|\sigma_t/\sigma-1|$ has median $0.18\%$, maximum $1.3\%$ for $\sigma\ge0.1$, and $2.6\%$ at $\sigma\approx0.06$. ViT frequencies: (0.085, 0.098, 0.071, 0.142, 0.081, 0.062, 0.186, 0.091, 0.064, 0.121); FID $21.4$ at $n=3{,}000$ with our sampler.
+
+\para{Graded corruptions and band-limited corrections.}
+Table~\ref{tab:power} lists the corrupted and band-corrected runs (2{,}500 trajectories each). Transitions are compared pair by pair with an uncorrupted run of the same size, using 30 bootstrap medians per pair, and summarised as the geometric mean ratio over pairs with a class-block interval. The first row compares the baseline with an independent resampling of itself.
+
+\begin{table}[h]
+\centering
+\caption{Corruptions of the score and band-limited class corrections. ``Class-mass error'' is the mean $|\log f/f_{\rm ref}|$ with our classifier's labels.}
+\label{tab:power}
+\footnotesize\setlength{\tabcolsep}{4pt}
+\begin{tabular}{lccccc}
+\toprule
+run & $\sbif$ ratio, raw & $\sbif$ ratio, rebalanced & rebalanced $h$ vs data & class-mass error & FID \\
+\midrule
+baseline (self) & 0.98 [0.94, 1.03] & 1.00 [0.97, 1.03] & 0.91 & 0.134 & 12.9 \\
+score $\times0.995$ & 0.81 [0.72, 0.90] & 0.94 [0.83, 1.04] & 0.89 & 0.203 & 13.7 \\
+score $\times0.98$ & 0.71 [0.57, 0.90] & 0.84 [0.68, 1.11] & 0.94 & 0.227 & 15.7 \\
+score $\times0.95$ & 0.55 [0.39, 0.69] & 0.87 [0.75, 0.97] & 0.84 & 0.393 & 25.4 \\
+noise level $\times1.1$ & 0.55 [0.44, 0.68] & 0.81 [0.66, 1.05] & 0.85 & 0.349 & 35.7 \\
+noise level $\times1.25$ & 0.60 [0.30, 1.50] & 0.66 [0.42, 1.27] & 0.21 & 1.009 & 106.1 \\
+\midrule
+correction, all $\sigma$ & 0.92 [0.79, 1.02] & 0.90 [0.81, 1.00] & 0.93 & 0.076 & 12.7 \\
+correction, $\sigma\ge2.4$ & 0.88 [0.76, 1.03] & 0.89 [0.73, 1.06] & 0.95 & 0.130 & 13.0 \\
+correction, $\sigma\le2.4$ & 0.85 [0.72, 0.96] & 0.90 [0.70, 1.10] & 0.93 & 0.138 & 13.3 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=\textwidth]{figs/fig_power.pdf}
+\caption{Graded corruptions of the score (Table~\ref{tab:power}). Blue: score multiplied by $\lambda$; orange: denoiser told the noise level is $\kappa\sigma$. (a) Ratio of density transitions to the uncorrupted baseline, as sampled, and (b) after rebalancing, with class-block intervals. (c) Agreement of the rebalanced lopsidedness with the data, which illustrates the low sensitivity of this statistic quantified in Section~\ref{sec:power}. (d) Class imbalance. (e) FID at 2{,}500 images.}
+\label{fig:power}
+\end{figure}
+
+
+\section{Digits: Linear Coordinates, Small Networks, and Class Bias}
+\label{app:mnist}
+
+\para{Census along linear coordinates.}
+On MNIST and FashionMNIST, the Fisher direction $u\propto(S_a+S_b+I)^{-1}(\mu_a-\mu_b)$ is a good order parameter, and the data side needs only a histogram of $u\cdot x_0$ convolved with a Gaussian. With 1{,}000 bootstrap resamples and 180 symmetrised controls per dataset, 37 of 45 MNIST pairs (median $|h|=0.026$) and 30 of 45 FashionMNIST pairs (median $0.015$) exceed the floor with intervals excluding zero (Table~\ref{tab:mnist}). Across pairs, the jump at the transition scales as $(|h|/2b)^{0.36}$, close to the normal form's $1/3$. Synthetic pairs with known unfoldings, run through the same pipeline, give the same exponent ($0.366$) and the same 10\% shortfall in prefactor. This exponent therefore reflects the truncated-cubic fit rather than the data, and we do not use it as evidence.
+
+\begin{table}[h]
+\caption{MNIST census along the LDA direction. $\tbif$ is in units of $\tau=\sigma^2/\ell^2$.}
+\label{tab:mnist}
+\begin{center}
+\scriptsize\setlength{\tabcolsep}{3pt}
+\begin{tabular}{lccccc|lccccc}
+\toprule
+pair & $\tbif$ & jump & $h$ & $a$ & $b$ & pair & $\tbif$ & jump & $h$ & $a$ & $b$ \\
+\midrule
+(0,1) & 0.906 & 0.72 & $-0.011$ & $+0.042$ & 0.277  & (2,9) & 0.754 & 1.07 & $-0.041$ & $+0.143$ & 0.350  \\
+(0,2) & 0.827 & 0.74 & $+0.011$ & $+0.045$ & 0.272  & (3,4) & 0.792 & 0.95 & $-0.027$ & $+0.101$ & 0.323  \\
+(0,3) & 0.864 & 0.63 & $-0.007$ & $+0.026$ & 0.260  & (3,5) & 0.571 & 1.13 & $-0.050$ & $+0.167$ & 0.366  \\
+(0,4) & 0.855 & 0.84 & $-0.018$ & $+0.069$ & 0.297  & (3,6) & 0.782 & 0.96 & $-0.028$ & $+0.104$ & 0.325  \\
+(0,5) & 0.748 & 1.06 & $-0.040$ & $+0.142$ & 0.354  & (3,7) & 0.770 & 1.07 & $-0.040$ & $+0.140$ & 0.343  \\
+(0,6) & 0.810 & 0.86 & $-0.019$ & $+0.074$ & 0.298  & (3,8) & 0.770 & 0.55 & $-0.004$ & $+0.014$ & 0.236  \\
+(0,7) & 0.812 & 0.93 & $-0.026$ & $+0.097$ & 0.322  & (3,9) & 0.765 & 1.02 & $-0.034$ & $+0.121$ & 0.328  \\
+(0,8) & 0.931 & 0.40 & $-0.002$ & $-0.001$ & 0.231  & (4,5) & 0.835 & 0.59 & $-0.006$ & $+0.020$ & 0.255  \\
+(0,9) & 0.880 & 0.70 & $-0.010$ & $+0.038$ & 0.268  & (4,6) & 0.854 & 0.79 & $+0.014$ & $+0.056$ & 0.281  \\
+(1,2) & 0.696 & 1.23 & $+0.075$ & $+0.243$ & 0.439  & (4,7) & 0.750 & 0.97 & $+0.029$ & $+0.105$ & 0.320  \\
+(1,3) & 0.828 & 1.01 & $+0.033$ & $+0.120$ & 0.329  & (4,8) & 0.797 & 0.93 & $+0.025$ & $+0.094$ & 0.314  \\
+(1,4) & 0.856 & 0.92 & $+0.025$ & $+0.092$ & 0.314  & (4,9) & 0.691 & 0.97 & $-0.027$ & $+0.102$ & 0.306  \\
+(1,5) & 0.901 & 0.70 & $+0.010$ & $+0.037$ & 0.266  & (5,6) & 0.844 & 0.28 & $+0.000$ & $-0.010$ & 0.222  \\
+(1,6) & 0.826 & 0.99 & $+0.032$ & $+0.117$ & 0.337  & (5,7) & 0.857 & 0.47 & $+0.002$ & $+0.004$ & 0.242  \\
+(1,7) & 0.829 & 1.01 & $+0.033$ & $+0.120$ & 0.332  & (5,8) & 0.615 & 1.26 & $+0.074$ & $+0.236$ & 0.408  \\
+(1,8) & 0.630 & 1.36 & $+0.108$ & $+0.322$ & 0.478  & (5,9) & 0.788 & 0.89 & $+0.020$ & $+0.078$ & 0.294  \\
+(1,9) & 0.880 & 0.83 & $+0.017$ & $+0.066$ & 0.292  & (6,7) & 0.906 & 0.52 & $-0.004$ & $+0.011$ & 0.250  \\
+(2,3) & 0.766 & 0.81 & $+0.014$ & $+0.057$ & 0.271  & (6,8) & 0.862 & 0.59 & $+0.006$ & $+0.020$ & 0.250  \\
+(2,4) & 0.746 & 1.05 & $-0.040$ & $+0.138$ & 0.349  & (6,9) & 0.912 & 0.51 & $-0.004$ & $+0.010$ & 0.248  \\
+(2,5) & 0.712 & 1.03 & $-0.037$ & $+0.130$ & 0.341  & (7,8) & 0.804 & 0.95 & $+0.027$ & $+0.099$ & 0.315  \\
+(2,6) & 0.756 & 1.01 & $-0.033$ & $+0.119$ & 0.326  & (7,9) & 0.703 & 0.95 & $-0.024$ & $+0.090$ & 0.289  \\
+(2,7) & 0.732 & 1.08 & $-0.042$ & $+0.148$ & 0.353  & (8,9) & 0.752 & 1.09 & $-0.043$ & $+0.150$ & 0.349  \\
+(2,8) & 0.672 & 1.09 & $-0.043$ & $+0.149$ & 0.350  & & & & & & \\
+
+\bottomrule
+\end{tabular}
+\end{center}
+\end{table}
+
+\para{Small networks commit late.}
+We trained EDM U-Nets with about one million parameters on pairs of digits, three seeds for most pairs, and measured their transitions with the mean-force identity (Table~\ref{tab:small}). Early in training they also carry an asymmetry the data do not have. For (0,1), $h=+0.36\pm0.05$ at epoch 20 against $-0.01$ for the data, falling to $0.00\pm0.02$ by epoch 80.
+
+\begin{table}[h]
+\centering
+\caption{Transition of small trained denoisers along the LDA direction, in noise variance $\tau$ (mean $\pm$ sd over three seeds where given).}
+\label{tab:small}
+\small
+\begin{tabular}{lccc}
+\toprule
+pair & data & epoch 20 & epoch 80 \\
+\midrule
+MNIST (0,1) & 0.905 & $0.28\pm0.02$ & $0.74\pm0.03$ \\
+MNIST (0,8) & 0.933 & $0.40\pm0.01$ & $0.64\pm0.02$ \\
+MNIST (3,8) & 0.778 & not bimodal & 0.58 \\
+FashionMNIST (1,7) & 0.917 & 0.28 & 0.75 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\para{Where their class bias lives.}
+Undertrained networks generate class-imbalanced samples from balanced data. We replaced the network's drift along the class axis with the data's, $D'(x)=D(x)+\sigma^2[g_{\rm data}(m;\sigma)-g_{\rm net}(m;\sigma)]\,u/\ell$, either at all noise levels or in one band at a time (Table~\ref{tab:bands}). A sham replacement, using the network's own drift re-estimated from independent samples, and a replacement along a random orthogonal direction both had no effect. Replacing at all noise levels removed most of the stochastic sampler's bias for two of four pairs, and 19--35\% of the deterministic sampler's bias where that bias was large. No single band dominates, and the shares roughly add up: the bias accumulates over the whole trajectory.
+
+\begin{table}[h]
+\centering
+\caption{Band-limited drift replacement (epoch 20, three seeds). Excess fraction of the first class over the real-data baseline, mean $\pm$ sd.}
+\label{tab:bands}
+\footnotesize\setlength{\tabcolsep}{4pt}
+\begin{tabular}{llccccc}
+\toprule
+pair & sampler & none & $\tau>1.5$ & $0.3\le\tau\le1.5$ & $\tau<0.3$ & all $\tau$ \\
+\midrule
+(0,1) & Heun-40 & $+0.213\pm0.034$ & $+0.186\pm0.035$ & $+0.188\pm0.028$ & $+0.193\pm0.038$ & $+0.138\pm0.024$ \\
+(0,1) & SDE-40 & $+0.097\pm0.062$ & $+0.079\pm0.064$ & $+0.056\pm0.056$ & $+0.071\pm0.066$ & $-0.008\pm0.042$ \\
+(3,8) & SDE-40 & $+0.101\pm0.022$ & $+0.098\pm0.029$ & $+0.077\pm0.025$ & $+0.073\pm0.031$ & $+0.030\pm0.017$ \\
+(0,8) & Heun-40 & $-0.076\pm0.001$ & $-0.065\pm0.006$ & $-0.072\pm0.006$ & $-0.079\pm0.007$ & $-0.061\pm0.010$ \\
+(2,7) & Heun-40 & $+0.184\pm0.011$ & $+0.164\pm0.006$ & $+0.172\pm0.002$ & $+0.169\pm0.010$ & $+0.149\pm0.004$ \\
+(2,7) & SDE-40 & $+0.102\pm0.007$ & $+0.107\pm0.007$ & $+0.098\pm0.007$ & $+0.101\pm0.010$ & $+0.089\pm0.018$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Does the Fold's Shape Affect Sampling?}
+\label{app:sampling}
+
+In one-dimensional reduced dynamics with the exact drift of all 45 MNIST pairs, stochastic samplers with few steps under-populate the persisting class in proportion to $|h|$. Deterministic samplers cannot show any such effect, because a one-dimensional flow preserves quantiles. The reduced dynamics reproduces the marginals of $m$ only in continuous time, however, so we repeated the test in $d=784$ on a two-class mixture with unequal spreads along the class direction and an analytic score, with real samplers and 4{,}000 samples (Table~\ref{tab:fulldim}). No sampler shows a dependence on $h$; all errors stay within about 2\%. We also found that, along real ODE trajectories of small networks, the sign of the denoised class coordinate never changes after the first step for at least three quarters of trajectories.
+
+\begin{table}[h]
+\centering
+\caption{Class-fraction error towards the persisting class in $d=784$ with an exact score (s.e.\ $\approx0.008$).}
+\label{tab:fulldim}
+\small
+\begin{tabular}{ccccccc}
+\toprule
+$h$ & Heun-10 & Heun-40 & SDE-10 & SDE-40 & SDE-160 \\
+\midrule
+$-0.0002$ & $-0.014$ & $-0.014$ & $-0.008$ & $-0.017$ & $-0.015$ \\
+$+0.0080$ & $+0.007$ & $+0.010$ & $-0.002$ & $+0.015$ & $+0.011$ \\
+$+0.0313$ & $-0.010$ & $-0.004$ & $-0.014$ & $+0.006$ & $+0.002$ \\
+$+0.0831$ & $-0.022$ & $-0.018$ & $-0.013$ & $+0.002$ & $-0.007$ \\
+$+0.2027$ & $-0.020$ & $-0.015$ & $-0.004$ & $+0.003$ & $+0.000$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Entropy-Variance Detectors}
+\label{app:detector}
+
+A common way to locate the critical window is the noise level at which the variance across samples of a conditional entropy peaks \citep{stancevic2026information}. Along MNIST LDA coordinates, the peak of $\mathrm{Var}[H(c\mid m)]$ sits at a median of $0.88\,\tbif$, a VP-time offset of $-0.07$. One pair, (3,6), gives a much larger ratio. Its variance curve rises again above $\tau\approx3$, where the posterior carries no information, and the maximum jumps to the edge of the grid; restricting the search to $\tau<3$ removes the outlier. Detectors of this kind therefore sit close to the population transition, and, by Section~\ref{sec:branching}, somewhat after individual samples have decided.
+
+\section{Compute and Assets}
+\label{app:compute}
+
+All experiments ran on a single NVIDIA T4 GPU (16 GB) in a cloud notebook environment, about 80 GPU-hours in total. The main costs were the pretrained-model runs (about 5 hours for 14{,}500 trajectories plus the reference, about 8.5 hours for the first interventions, about 4 hours for branching, about 1.5 hours for the conditional model, about 6.5 hours for the corruption and band experiments, and about 6.6 hours for the sampler, corrected-tilt and DDPM runs) and the coordinate studies (about 5 hours). The statistical re-analyses ran on CPU. CIFAR-10 \citep{krizhevsky2009learning} is distributed by its authors without an explicit licence. MNIST \citep{lecun1998gradient} is available under CC BY-SA 3.0 and Fashion-MNIST \citep{xiao2017fashion} under the MIT licence. The EDM code and checkpoints \citep{karras2022elucidating} are licensed CC BY-NC-SA 4.0, and we use them for non-commercial research only.
+
+\clearpage
+\section{Per-Pair Results}
+\label{app:tables}
+
+\begin{table}[h]
+\centering
+\caption{CIFAR-10 census (test set). Transition noise with 95\% interval (raw coordinate); asymmetry $h$ with 95\% interval along the raw log-odds and along the recalibrated log-ratio. ``Robust'' marks pairs asymmetric beyond the through-classifier null in both coordinates, with the same sign. Cat/dog never develops two modes.}
+\label{tab:census_full}
+\scriptsize
+\begin{tabular}{lcccc}
+\toprule
+pair & $\sbif$ (raw) & $h$ (raw) & $h$ (recalibrated) & robust \\
+\midrule
+airplane/automobile & 1.33 [1.20, 1.47] & $+0.006$ [$-0.022$, $+0.047$] & $-0.098$ [$-0.123$, $-0.076$] &  \\
+airplane/bird & 2.69 [1.80, 3.63] & $+0.010$ [$-0.025$, $+0.036$] & $+0.025$ [$-0.050$, $+0.145$] &  \\
+airplane/cat & 1.63 [1.47, 1.99] & $-0.126$ [$-0.151$, $-0.060$] & $-0.113$ [$-0.135$, $-0.067$] &  \\
+airplane/deer & 2.43 [1.47, 4.44] & $-0.070$ [$-0.105$, $-0.014$] & $-0.053$ [$-0.116$, $-0.021$] &  \\
+airplane/dog & 1.80 [1.63, 2.20] & $-0.079$ [$-0.111$, $+0.000$] & $-0.014$ [$-0.102$, $+0.034$] &  \\
+airplane/frog & 2.69 [2.20, 2.97] & $-0.275$ [$-0.303$, $-0.233$] & $-0.316$ [$-0.340$, $-0.286$] & yes \\
+airplane/horse & 1.63 [1.47, 1.80] & $-0.110$ [$-0.138$, $-0.082$] & $-0.027$ [$-0.057$, $+0.003$] &  \\
+airplane/ship & 0.54 [0.49, 0.60] & $-0.088$ [$-0.112$, $-0.067$] & $-0.101$ [$-0.121$, $-0.081$] &  \\
+airplane/truck & 1.09 [0.98, 1.20] & $-0.050$ [$-0.073$, $-0.027$] & $-0.054$ [$-0.080$, $-0.029$] &  \\
+automobile/bird & 1.80 [1.63, 2.20] & $-0.043$ [$-0.078$, $-0.003$] & $+0.023$ [$-0.007$, $+0.048$] &  \\
+automobile/cat & 1.47 [1.33, 1.63] & $-0.174$ [$-0.203$, $-0.142$] & $-0.268$ [$-0.285$, $-0.250$] & yes \\
+automobile/deer & 1.80 [1.63, 1.99] & $-0.154$ [$-0.179$, $-0.126$] & $-0.267$ [$-0.289$, $-0.238$] & yes \\
+automobile/dog & 1.80 [1.63, 2.20] & $-0.117$ [$-0.143$, $-0.088$] & $-0.122$ [$-0.160$, $-0.085$] &  \\
+automobile/frog & 1.99 [1.80, 1.99] & $-0.154$ [$-0.177$, $-0.133$] & $-0.187$ [$-0.219$, $-0.164$] & yes \\
+automobile/horse & 1.63 [1.47, 1.80] & $-0.101$ [$-0.125$, $-0.075$] & $-0.089$ [$-0.114$, $-0.060$] &  \\
+automobile/ship & 1.09 [0.98, 1.47] & $-0.083$ [$-0.116$, $-0.032$] & $+0.098$ [$+0.068$, $+0.127$] &  \\
+automobile/truck & 0.49 [0.40, 0.66] & $-0.082$ [$-0.109$, $-0.043$] & $-0.243$ [$-0.272$, $-0.171$] & yes \\
+bird/cat & 0.30 [0.20, 0.40] & $-0.039$ [$-0.066$, $-0.014$] & $-0.010$ [$-0.038$, $+0.014$] &  \\
+bird/deer & 0.20 [0.18, 0.24] & $-0.072$ [$-0.097$, $-0.049$] & $-0.090$ [$-0.118$, $-0.065$] &  \\
+bird/dog & 0.30 [0.24, 0.40] & $+0.041$ [$+0.021$, $+0.063$] & $-0.089$ [$-0.135$, $-0.059$] &  \\
+bird/frog & 0.36 [0.33, 0.44] & $-0.039$ [$-0.062$, $-0.016$] & $-0.023$ [$-0.048$, $+0.005$] &  \\
+bird/horse & 0.30 [0.24, 0.33] & $+0.230$ [$+0.212$, $+0.248$] & $+0.204$ [$+0.177$, $+0.282$] & yes \\
+bird/ship & 1.99 [1.80, 2.43] & $-0.029$ [$-0.052$, $-0.006$] & $+0.021$ [$-0.017$, $+0.109$] &  \\
+bird/truck & 2.20 [1.80, 2.43] & $+0.016$ [$-0.008$, $+0.040$] & $-0.031$ [$-0.059$, $+0.004$] &  \\
+cat/deer & 0.36 [0.30, 0.44] & $-0.008$ [$-0.032$, $+0.024$] & $+0.087$ [$+0.059$, $+0.111$] &  \\
+cat/frog & 0.44 [0.30, 0.66] & $+0.042$ [$-0.013$, $+0.102$] & $-0.086$ [$-0.116$, $-0.061$] &  \\
+cat/horse & 0.27 [0.18, 0.36] & $+0.273$ [$+0.250$, $+0.295$] & $+0.139$ [$+0.117$, $+0.163$] &  \\
+cat/ship & 1.99 [1.80, 2.43] & $+0.114$ [$+0.089$, $+0.137$] & $+0.233$ [$+0.191$, $+0.267$] & yes \\
+cat/truck & 1.80 [1.33, 1.99] & $+0.089$ [$+0.055$, $+0.130$] & $+0.142$ [$+0.112$, $+0.173$] &  \\
+deer/dog & 0.24 [0.20, 0.30] & $+0.215$ [$+0.196$, $+0.235$] & $+0.213$ [$+0.175$, $+0.263$] & yes \\
+deer/frog & 0.40 [0.36, 0.49] & $+0.040$ [$+0.010$, $+0.065$] & $-0.125$ [$-0.148$, $-0.073$] &  \\
+deer/horse & 0.33 [0.27, 0.40] & $+0.170$ [$+0.147$, $+0.193$] & $+0.246$ [$+0.210$, $+0.270$] & yes \\
+deer/ship & 2.69 [2.43, 3.63] & $-0.026$ [$-0.049$, $-0.002$] & $-0.068$ [$-0.091$, $-0.045$] &  \\
+deer/truck & 2.20 [1.99, 2.43] & $+0.073$ [$+0.046$, $+0.098$] & $+0.092$ [$+0.045$, $+0.118$] &  \\
+dog/frog & 0.49 [0.44, 0.54] & $-0.055$ [$-0.079$, $-0.028$] & $-0.138$ [$-0.182$, $-0.119$] &  \\
+dog/horse & 0.36 [0.30, 0.44] & $+0.114$ [$+0.089$, $+0.137$] & $+0.038$ [$-0.034$, $+0.059$] &  \\
+dog/ship & 2.43 [2.20, 2.97] & $+0.088$ [$+0.065$, $+0.112$] & $+0.076$ [$+0.040$, $+0.106$] &  \\
+dog/truck & 1.99 [1.80, 2.20] & $+0.069$ [$+0.043$, $+0.094$] & $-0.092$ [$-0.178$, $-0.028$] &  \\
+frog/horse & 0.81 [0.73, 0.89] & $+0.231$ [$+0.211$, $+0.251$] & $+0.210$ [$+0.188$, $+0.232$] & yes \\
+frog/ship & 2.69 [2.43, 3.28] & $+0.152$ [$+0.129$, $+0.173$] & $+0.245$ [$+0.223$, $+0.279$] & yes \\
+frog/truck & 1.99 [1.80, 2.20] & $+0.175$ [$+0.155$, $+0.198$] & $+0.284$ [$+0.261$, $+0.304$] & yes \\
+horse/ship & 2.69 [2.43, 3.28] & $+0.001$ [$-0.029$, $+0.028$] & $-0.109$ [$-0.135$, $-0.020$] &  \\
+horse/truck & 1.47 [1.20, 1.63] & $+0.005$ [$-0.025$, $+0.036$] & $+0.040$ [$-0.003$, $+0.234$] &  \\
+ship/truck & 1.20 [0.98, 1.47] & $+0.044$ [$+0.009$, $+0.069$] & $-0.020$ [$-0.047$, $+0.009$] &  \\
+
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[h]
+\centering
+\caption{Pretrained unconditional EDM against the data, per pair (reverse SDE, 14{,}500 trajectories; the reference subsampled to the same size). All values are medians of 100 paired bootstrap resamples, and the interval is the 95\% interval of the ratio. $h$ is raw, before rebalancing.}
+\label{tab:pre_full}
+\scriptsize
+\begin{tabular}{lcccccc}
+\toprule
+pair & $\sbif$ data & $\sbif$ model & ratio & 95\% interval & $h$ data & $h$ model \\
+\midrule
+airplane/automobile & 1.39 & 1.15 & 0.82 & [0.68, 1.07] & $+0.007$ & $-0.109$ \\
+airplane/bird & 2.15 & 0.91 & 0.47 & [0.24, 0.78] & $+0.018$ & $+0.159$ \\
+airplane/cat & 1.79 & 2.56 & 1.36 & [1.13, 1.68] & $-0.087$ & $+0.016$ \\
+airplane/deer & 2.88 & 2.15 & 0.71 & [0.44, 1.28] & $-0.013$ & $+0.082$ \\
+airplane/dog & 1.90 & 2.28 & 1.20 & [0.97, 1.47] & $-0.061$ & $-0.044$ \\
+airplane/frog & 2.72 & 2.15 & 0.79 & [0.58, 1.03] & $-0.232$ & $-0.251$ \\
+airplane/horse & 1.39 & 1.31 & 0.91 & [0.73, 1.07] & $-0.072$ & $-0.159$ \\
+airplane/ship & 0.50 & 0.58 & 1.16 & [0.93, 1.45] & $-0.086$ & $-0.059$ \\
+airplane/truck & 1.07 & 0.94 & 0.88 & [0.72, 1.07] & $-0.033$ & $-0.149$ \\
+automobile/bird & 1.90 & 1.31 & 0.73 & [0.61, 0.88] & $-0.040$ & $+0.244$ \\
+automobile/cat & 1.48 & 1.58 & 1.06 & [0.83, 1.29] & $-0.143$ & $+0.129$ \\
+automobile/deer & 1.68 & 1.68 & 1.00 & [0.83, 1.13] & $-0.136$ & $+0.117$ \\
+automobile/dog & 1.90 & 2.02 & 1.06 & [0.89, 1.20] & $-0.093$ & $+0.088$ \\
+automobile/frog & 1.79 & 1.90 & 1.06 & [0.88, 1.20] & $-0.164$ & $-0.058$ \\
+automobile/horse & 1.58 & 1.68 & 1.00 & [0.88, 1.21] & $-0.075$ & $-0.105$ \\
+automobile/ship & 1.15 & 1.07 & 0.94 & [0.64, 1.14] & $-0.079$ & $+0.060$ \\
+automobile/truck & 0.43 & 0.58 & 1.25 & [0.86, 1.68] & $-0.081$ & $-0.065$ \\
+bird/cat & 0.25 & 0.27 & 1.00 & [0.49, 1.76] & $-0.016$ & $-0.073$ \\
+bird/deer & 0.21 & 0.19 & 0.92 & [0.63, 1.28] & $-0.059$ & $-0.056$ \\
+bird/dog & 0.37 & 0.37 & 1.00 & [0.73, 1.46] & $+0.044$ & $-0.099$ \\
+bird/frog & 0.43 & 0.29 & 0.68 & [0.44, 0.86] & $-0.028$ & $-0.186$ \\
+bird/horse & 0.40 & 0.56 & 1.45 & [1.12, 1.88] & $+0.232$ & $-0.081$ \\
+bird/ship & 2.42 & 1.58 & 0.69 & [0.48, 1.07] & $-0.020$ & $-0.152$ \\
+bird/truck & 2.42 & 1.22 & 0.51 & [0.41, 0.73] & $+0.025$ & $-0.295$ \\
+cat/deer & 0.37 & 0.34 & 0.92 & [0.43, 1.58] & $+0.009$ & $+0.053$ \\
+cat/frog & 0.37 & 0.40 & 1.04 & [0.64, 1.59] & $+0.053$ & $-0.073$ \\
+cat/horse & 0.32 & 0.66 & 2.35 & [1.61, 3.80] & $+0.252$ & $+0.026$ \\
+cat/ship & 1.90 & 2.88 & 1.51 & [1.06, 1.87] & $+0.104$ & $+0.002$ \\
+cat/truck & 1.48 & 1.39 & 0.94 & [0.69, 1.29] & $+0.089$ & $-0.158$ \\
+deer/dog & 0.27 & 0.50 & 1.85 & [1.26, 2.54] & $+0.195$ & $+0.069$ \\
+deer/frog & 0.40 & 0.30 & 0.73 & [0.49, 0.96] & $+0.025$ & $-0.160$ \\
+deer/horse & 0.37 & 0.21 & 0.61 & [0.31, 1.14] & $+0.152$ & $-0.198$ \\
+deer/ship & 2.42 & 1.90 & 0.79 & [0.55, 1.16] & $-0.037$ & $-0.114$ \\
+deer/truck & 2.42 & 1.79 & 0.76 & [0.55, 1.10] & $+0.041$ & $-0.195$ \\
+dog/frog & 0.46 & 0.66 & 1.44 & [1.16, 1.80] & $-0.054$ & $-0.094$ \\
+dog/horse & 0.40 & 0.58 & 1.40 & [0.80, 1.93] & $+0.089$ & $-0.063$ \\
+dog/ship & 2.15 & 2.56 & 1.19 & [0.84, 1.43] & $+0.091$ & $+0.081$ \\
+dog/truck & 1.90 & 2.28 & 1.20 & [0.89, 1.62] & $+0.072$ & $-0.084$ \\
+frog/horse & 0.82 & 0.94 & 1.15 & [0.97, 1.45] & $+0.224$ & $+0.101$ \\
+frog/ship & 2.88 & 2.88 & 1.00 & [0.79, 1.19] & $+0.136$ & $+0.159$ \\
+frog/truck & 2.15 & 2.72 & 1.27 & [0.94, 1.56] & $+0.163$ & $+0.073$ \\
+horse/ship & 2.15 & 2.15 & 0.94 & [0.68, 1.20] & $-0.005$ & $+0.144$ \\
+horse/truck & 1.22 & 1.68 & 1.37 & [1.10, 1.77] & $-0.005$ & $+0.001$ \\
+ship/truck & 1.31 & 1.15 & 0.87 & [0.64, 1.14] & $+0.023$ & $-0.093$ \\
+\bottomrule
+\end{tabular}
+\end{table}
